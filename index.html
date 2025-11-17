@@ -2,98 +2,90 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Egyptian Sign Language Toponyms — Map</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>EgySL Toponym Map — Final with Multi-line Info</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <style>
-  :root { --control-w: 320px; --accent: #333; }
-  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-  #map{height:100vh;width:100vw}
-  /* Controls */
-  #controls{position:absolute;top:10px;left:10px;z-index:1200;background:rgba(255,255,255,0.98);padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.12);width:var(--control-w);max-width:92vw}
-  #controls h4{margin:0 0 8px 0;font-size:15px}
-  .radio-list{max-height:36vh;overflow:auto;padding-right:6px;margin-bottom:8px}
-  .radio-item{display:flex;align-items:center;margin:6px 0}
-  .radio-item input{margin-right:8px}
-  #toggleInfo{margin-top:6px;padding:6px 8px;border-radius:6px;border:1px solid #ddd;background:white;cursor:pointer}
-  #infoBox{display:none;margin-top:8px;background:#fafafa;border:1px solid #eee;padding:10px;border-radius:6px;font-size:13px;white-space:pre-wrap;max-height:28vh;overflow:auto}
-  #legend{margin-top:10px;font-size:13px}
-  .legend-item{display:flex;align-items:center;margin:6px 0}
-  .legend-swatch{width:18px;height:18px;border-radius:50%;margin-right:10px;border:2px solid black;box-sizing:border-box}
-  /* Popup */
-  .popup-box{max-width:420px}
-  .popup-scroll{max-height:44vh;overflow:auto;padding-right:6px}
-  .sign-entry{border-bottom:1px solid #eee;padding:8px 0;margin-bottom:8px}
-  iframe{width:100%;aspect-ratio:16/9;border-radius:6px;border:0}
-  /* Mobile adjustments */
-  @media (max-width:640px){
-    #controls{left:8px;right:8px;top:8px;width:auto;padding:10px;font-size:14px}
-    .radio-list{max-height:34vh}
-    #legend{font-size:13px}
-    .popup-box{max-width:92vw}
-    .popup-scroll{max-height:50vh}
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+  #map { height:100vh; }
+  .controls {
+    position:absolute; top:10px; left:10px; z-index:1000; background:white;
+    padding:12px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.18); width:300px;
   }
+  .controls h4 { margin:0 0 8px 0; font-size:14px; }
+  .radio-list { max-height:220px; overflow-y:auto; padding-right:6px; margin-top:6px; }
+  .radio-item { display:flex; align-items:center; margin-bottom:6px; gap:8px; }
+  .radio-item input { transform:scale(1.05); }
+  #legendWrap { position:absolute; left:10px; bottom:10px; z-index:1000; width:340px; }
+  #infoPanel {
+    background: rgba(255,255,255,0.98); padding:10px; border-radius:8px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.18); font-size:13px; margin-bottom:8px;
+  }
+  #legend { background: rgba(255,255,255,0.98); padding:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.18); font-size:13px; max-height:280px; overflow-y:auto; }
+  .legend-entry { display:flex; align-items:center; margin-bottom:6px; }
+  .legend-entry span { width:16px; height:16px; border-radius:50%; display:inline-block; margin-right:8px; border:1px solid rgba(0,0,0,0.08); }
+  .popup-scroll { max-height:420px; overflow-y:auto; padding-right:8px; }
+  .sign-entry { border-bottom:1px solid #ddd; padding:10px 0; margin-bottom:10px; }
+  iframe { width:100%; height:220px; border-radius:6px; }
+  .small-btn { background:#eee; border:none; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  .info-mode-select { margin-bottom:8px; width:100%; }
+  .info-edit { min-height:72px; max-height:240px; padding:8px; border-radius:6px; background:#fafafa; border:1px dashed #ddd; outline:none; overflow:auto; white-space:pre-wrap; }
+  .info-controls { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; align-items:center; }
+  .muted { color:#666; font-size:12px; }
 </style>
 </head>
 <body>
 
-<div id="controls" role="region" aria-label="Map controls">
+<div id="map"></div>
+
+<div class="controls" aria-label="Color by controls">
   <h4>Color by</h4>
-  <div class="radio-list" id="radioList">
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_semantic_major" value="semantic_major" checked><label for="mode_semantic_major">Semantic Major</label></div>
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_semantic_minor" value="semantic_minor"><label for="mode_semantic_minor">Semantic Minor</label></div>
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_morphology" value="morphology"><label for="mode_morphology">Morphology</label></div>
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_fingerspelling" value="fingerspelling"><label for="mode_fingerspelling">Fingerspelling</label></div>
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_phonology" value="phonology"><label for="mode_phonology">Phonological Type</label></div>
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_body_indexical" value="body_indexical"><label for="mode_body_indexical">Body-Indexical</label></div>
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_food" value="food"><label for="mode_food">Food-related</label></div>
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_handshape" value="handshape"><label for="mode_handshape">Handshape Iconicity</label></div>
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_movementIcon" value="movementIcon"><label for="mode_movementIcon">Movement Iconicity</label></div>
-    <div class="radio-item"><input type="radio" name="colorMode" id="mode_plurality" value="plurality"><label for="mode_plurality">Plurality</label></div>
+  <div class="radio-list" id="radioList" role="radiogroup" aria-label="Color by options">
+    <!-- radio buttons will be inserted here -->
   </div>
-
-  <button id="toggleInfo" aria-expanded="false">Show category info</button>
-  <div id="infoBox" aria-live="polite"></div>
-
-  <div id="legend" aria-hidden="false"></div>
+  <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+    <button id="fitBtn" class="small-btn">Fit to markers</button>
+    <span class="muted">Markers & legend update instantly</span>
+  </div>
 </div>
 
-<div id="map" role="application" aria-label="Toponym map"></div>
+<div id="legendWrap" style="left:10px; bottom:10px;">
+  <div id="infoPanel">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <strong id="infoTitle">Category Info — Semantic Major</strong>
+      <div>
+        <button id="toggleInfo" class="small-btn">Hide info</button>
+      </div>
+    </div>
 
+    <div class="info-controls" style="margin-top:8px;">
+      <select id="infoModeSelect" class="info-mode-select" title="Select mode to edit info"></select>
+      <button id="resetInfo" class="small-btn" title="Reset placeholder text">Reset</button>
+    </div>
+
+    <div id="infoEditArea" class="info-edit" contenteditable="true" aria-label="Edit info text">
+      <!-- filled by script -->
+    </div>
+
+    <div style="margin-top:6px" class="muted">Edit the multi-line descriptions. Click <strong>Hide info</strong> to collapse.</div>
+  </div>
+
+  <div id="legend" aria-live="polite" style="margin-top:8px;">
+    <!-- legend filled by script -->
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ======================================================
-   USER: Paste your grouped JSON into DATA below.
-   Expected structure (example):
-   DATA = {
-     "Cairo": {
-       lat: 30.0444,
-       lon: 31.2357,
-       variants: [
-         {
-           gloss: "EGYPT",
-           folk: "the Pyramids of Giza",
-           semantic_major: "Descriptive",
-           semantic_minor: "Relational",
-           morphology: "simplex",
-           phonology: "symmetrical",
-           body_indexical: "no",
-           fingerspelling: "no",
-           food: "no",
-           handshape: "Object",
-           movementIcon: "Movement-as-Shape",
-           plurality: "hands",
-           note: "Notes here",
-           video: "https://www.youtube.com/watch?v=Kp15tpyP21s"
-         },
-         ...
-       ]
-     },
-     ...
-   }
-   ====================================================== */
-const DATA = [
+/* ===========================
+   PASTE YOUR JSON DATA (Option 1: flat array)
+   Example: array of variant objects with keys (case/spacing-sensitive):
+     English, Latittude, Longitude, Link, Gloss, Folk Etymology,
+     Morphological Type, Semantic Type (Major), Semantic Type (Specific),
+     Related to a fingerspelling, Phonological Type, Body-Indexical,
+     Food-related, Handshape Iconicity, Movement Iconicity, Plurality, Notes
+=========================== */
+const data = [
     {
         "Link": "https://www.youtube.com/watch?v=Kp15tpyP21s",
         "English": "Cairo",
@@ -1174,343 +1166,416 @@ const DATA = [
         "Movement Iconicity": "N/A",
         "Plurality": "none"
     }
-]; // <-- PASTE your grouped JSON here
-
-/* ============================
-   Utility & normalization
-   ============================ */
-function safe(v){
-  if(v === undefined || v === null) return "N/A";
-  if(typeof v === "number" && isNaN(v)) return "N/A";
-  const s = String(v).trim();
-  if(s === "" || s.toLowerCase() === "nan") return "N/A";
-  return s;
-}
-
-// parse multi-values but do NOT split N/A or single "?"
-function parseCategories(raw){
-  const v = safe(raw);
-  if(v === "N/A" || v === "?") return [v];
-  // split on comma, slash, plus but only if not N/A
-  return v.split(/[,\/\+]/).map(x => x.trim()).filter(Boolean);
-}
-
-/* phonology normalization per your Option B (exact list includes only "asymmetrical") */
-function normalizePhonology(raw){
-  const v = safe(raw).toLowerCase();
-  if(v === "asymmetrical") return "asymmetrical";      // EXACT match -> canonical
-  if(v.includes("one") && v.includes("hand")) return "one-handed";
-  if(v.includes("symmetr")) return "symmetrical";
-  // keep others as provided (trimmed) but map "?" -> "N/A"
-  if(v === "?") return "N/A";
-  return safe(raw);
-}
-
-/* ======================================================
-   Color palettes & assignment (dynamic assignment)
-   ====================================================== */
-const PALETTE = [
-  "#e41a1c","#377eb8","#4daf4a","#984ea3","#ff7f00","#ffff33",
-  "#a65628","#f781bf","#999999","#66c2a5","#fc8d62","#8da0cb","#e78ac3","#a6d854"
 ];
 
-const colorAssignments = {}; // colorAssignments[mode][value] = color
+/* ===========================
+   Utilities & parsing
+=========================== */
+const PALETTE = [
+  "#1f78b4","#33a02c","#e31a1c","#ff7f00","#6a3d9a","#b15928","#8da0cb",
+  "#fb9a99","#fdbf6f","#cab2d6","#ffff99","#a6cee3","#b2df8a","#fb9a99",
+  "#e78ac3","#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3"
+];
 
-function ensureColor(value, mode){
-  if(!colorAssignments[mode]) colorAssignments[mode] = {};
-  if(!colorAssignments[mode][value]){
-    const idx = Object.keys(colorAssignments[mode]).length % PALETTE.length;
-    colorAssignments[mode][value] = PALETTE[idx];
-  }
-  return colorAssignments[mode][value];
+function safe(v){
+  if (v === undefined || v === null) return "N/A";
+  const s = String(v).trim();
+  return s === "" ? "N/A" : s;
 }
 
-/* pre-seed some color choices for important categories (optional, but keeps legend consistent) */
-const seedColors = {
-  semantic_major: { "Descriptive":"#1f78b4", "Associative":"#33a02c", "Occurrent":"#6a3d9a", "Copied":"#e31a1c", "Eponymous":"#17a2a6", "N/A":"gray" },
-  semantic_minor: { "Relational":"#3182bd","Structure":"#756bb1","Functional":"#31a354","Occupation/Activity":"#ff7f00","Environment":"#b15928","Linguistic":"#1f78b4","Topographic":"#6a3d9a","Locational":"#33a02c","Notable Person":"#e31a1c","Occasion":"#ff7f00","N/A":"gray" },
-  morphology: { "simplex":"#4daf4a","compound":"#984ea3","hybrid":"#377eb8","hybrid compound":"#377eb8","N/A":"gray" },
-  fingerspelling: { "yes":"#e41a1c", "no":"#377eb8", "N/A":"gray" },
-  phonology: { "one-handed":"#8dd3c7", "symmetrical":"#ffffb3", "asymmetrical":"#bebada", "one-handed + symmetrical":"#fb8072", "one-handed + asymmetrical":"#80b1d3", "N/A":"gray" },
-  body_indexical: { "yes":"#fdb462", "no":"#b3de69", "?":"#fccde5", "N/A":"gray" }
-};
-// copy seeds into colorAssignments to lock their order/colors early
-Object.keys(seedColors).forEach(mode => {
-  colorAssignments[mode] = Object.assign({}, seedColors[mode]);
-});
+function parseCategories(value){
+  if(!value || value === "N/A") return ["N/A"];
 
-/* ======================================================
-   PIE / CIRCLE marker creation (black outlines)
-   ====================================================== */
-function drawPieSVG(colors, size = 34){
-  const r = size/2;
-  const strokeWidth = Math.max(1, Math.round(size * 0.06));
+  const raw = String(value).trim();
+
+  // Special values — DO NOT split them
+  if(raw === "?" || raw.toUpperCase() === "N/A") return ["N/A"];
+
+  // Now we safely split the multi-valued types
+  return raw.split(/[,\/\+]/)
+    .map(v => v.trim())
+    .filter(v => v)
+    .map(v => {
+      const low = v.toLowerCase();
+      if(low === "enviroment") return "Environment";
+      if(low === "topographic") return "Topographic";
+      if(low === "locational") return "Locational";
+      if(low === "?") return "N/A";
+      if(low === "n") return "N/A";   // catches accidental "N"
+      if(low === "a") return "N/A";   // catches accidental "A"
+      return v;
+    });
+}
+
+function normalizeToken(tok){
+  const v = String(tok).trim();
+  const low = v.toLowerCase();
+  if (low === "?" || low === "n/a" || low === "na") return "N/A";
+
+  // semantic / minor
+  if (low.includes("structure")) return "Structure";
+  if (low.includes("relational")) return "Relational";
+  if (low.includes("functional")) return "Functional";
+  if (low.includes("occupation")) return "Occupation/Activity";
+  if (low.includes("activity") && !low.includes("occupation")) return "Occupation/Activity";
+  if (low.includes("environment") || low.includes("enviroment")) return "Environment";
+  if (low.includes("linguistic")) return "Linguistic";
+  if (low.includes("topographic")) return "Topographic";
+  if (low.includes("locational")) return "Locational";
+  if (low.includes("notable") || low.includes("person")) return "Notable Person";
+  if (low.includes("occasion")) return "Occasion";
+  if (low.includes("incident")) return "Incident";
+  if (low.includes("copied")) return "Copied";
+  if (low.includes("descriptive")) return "Descriptive";
+  if (low.includes("associative")) return "Associative";
+  if (low.includes("eponym")) return "Eponymous";
+
+  // phonology
+  if (low.includes("one-handed") || low.includes("one handed") || low.includes("onehanded")) return "one-handed";
+  if (low.includes("symmetrical") || low.includes("symetric")) return "symmetrical";
+  if (low.includes("asymmetrical") || low.includes("asymetric")) return "asymmetrical";
+  if (low.includes("one-handed + symmetrical") || low.includes("one-handed+symmetrical") ) return "one-handed + symmetrical";
+  if (low.includes("symmetrical + asymmetrical") || low.includes("symmetrical+asymmetrical")) return "symmetrical + asymmetrical";
+
+  // body indexical
+  if (low === "yes" || low === "y") return "yes";
+  if (low === "no" || low === "n") return "no";
+
+  // Food-related
+  if (low === "yes" || low === "y" || low.includes("food") ) return "yes";
+  if (low === "no" || low === "n") return "no";
+
+  // Handshape Iconicity
+  if (low.includes("object + hands") || low.includes("object+hands") || low.includes("object and hands")) return "Object + Hands as Hands";
+  if (low.includes("hands as hands")) return "Hands as Hands";
+  if (low.includes("object")) return "Object";
+  if (low.includes("indexical")) return "Indexical";
+  if (low.includes("handling")) return "Handling";
+  if (low.includes("ambig")) return "Ambiguous";
+
+  // Movement Iconicity
+  if (low.includes("movement as shape")) return "Movement-as-Shape";
+  if (low.includes("movement as movement")) return "Movement-as-Movement";
+  if (low.includes("movement as plural")) return "Movement-as-Plural";
+  if (low.includes("ambig")) return "Ambiguous";
+  if (low.includes("none")) return "None";
+  if (low === "n/a") return "N/A";
+
+  // Plurality
+  if (low.includes("hands")) return "Hands";
+  if (low.includes("selected fingers")) return "Selected Fingers";
+  if (low.includes("movement")) return "Movement";
+  if (low.includes("none")) return "None";
+
+  // fallback: title-case
+  return v.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1));
+}
+
+/* ===========================
+   Color maps
+=========================== */
+const colorMaps = {
+  semantic_major:{
+    "Descriptive":"#1f78b4","Associative":"#33a02c","Occurrent":"#6a3d9a","Copied":"#e31a1c","Eponymous":"#17a2a6","N/A":"gray"
+  },
+  semantic_minor:{
+    "Relational":"#3182bd","Structure":"#756bb1","Functional":"#31a354",
+    "Occupation/Activity":"#ff7f00","Environment":"#b15928","Linguistic":"#1f78b4",
+    "Topographic":"#6a3d9a","Locational":"#33a02c","Notable Person":"#e31a1c",
+    "Occasion":"#fdb462","N/A":"gray"
+  },
+  morphology:{
+    "simplex":"#4daf4a","compound":"#984ea3","hybrid":"#377eb8","hybrid compound":"#377eb8","N/A":"gray"
+  },
+  fingerspelling:{ "yes":"#e41a1c","no":"#377eb8","N/A":"gray" },
+  phonology:{
+    "one-handed":"#8dd3c7","symmetrical":"#ffffb3","asymmetrical":"#bebada",
+    "one-handed + symmetrical":"#fb8072","symmetrical + asymmetrical":"#80b1d3","N/A":"gray","?":"gray"
+  },
+  body_indexical:{
+    "yes":"#fdb462","no":"#b3de69","?":"#fccde5","N/A":"gray"
+  },
+  food:{
+    "yes":"#e78ac3","no":"#a6cee3","N/A":"gray"
+  },
+  handshape:{
+    "Object":"#66c2a5","Indexical":"#fc8d62","Handling":"#8da0cb","Hands as Hands":"#e5c494","Object + Hands as Hands":"#b3b3b3","Ambiguous":"#fb9a99","N/A":"gray"
+  },
+  movementIcon:{
+    "Movement-as-Shape":"#8dd3c7","Movement-as-Movement":"#ffffb3","Movement-as-Plural":"#bebada","Ambiguous":"#fb8072","None":"#ccebc5","N/A":"gray"
+  },
+  plurality:{
+    "Hands":"#1f78b4","Movement":"#33a02c","Selected Fingers":"#e31a1c","None":"#999999","N/A":"gray"
+  }
+};
+
+function ensureColorFor(mode, key){
+  if(!colorMaps[mode]) colorMaps[mode] = {};
+  if(colorMaps[mode][key]) return colorMaps[mode][key];
+  const used = new Set(Object.values(colorMaps[mode]));
+  const pick = PALETTE.find(c => !used.has(c)) || PALETTE[0];
+  colorMaps[mode][key] = pick;
+  return pick;
+}
+
+/* ===========================
+   Pie marker SVG
+=========================== */
+function drawPieSVG(colors,size){
+  const r=size/2;
+  let angle=-Math.PI/2;
+  let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">`;
   const seg = colors.length;
-  let angle = -Math.PI/2;
-  let paths = '';
   for(let i=0;i<seg;i++){
     const start = angle;
     const end = angle + (2*Math.PI/seg);
-    const x1 = r + r*Math.cos(start);
-    const y1 = r + r*Math.sin(start);
-    const x2 = r + r*Math.cos(end);
-    const y2 = r + r*Math.sin(end);
+    const x1 = r + r * Math.cos(start);
+    const y1 = r + r * Math.sin(start);
+    const x2 = r + r * Math.cos(end);
+    const y2 = r + r * Math.sin(end);
     const largeArc = (end-start) > Math.PI ? 1 : 0;
-    paths += `<path d="M ${r} ${r} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${colors[i]}" stroke="black" stroke-width="${strokeWidth}" />`;
+    svg += `<path d="M ${r} ${r} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${colors[i]}" stroke="#222" stroke-opacity="0.06" stroke-width="0.4"/>`;
     angle = end;
   }
-  // outer circle outline for crispness
-  paths += `<circle cx="${r}" cy="${r}" r="${r - strokeWidth/2}" fill="none" stroke="black" stroke-width="${strokeWidth}" />`;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
+  svg += `</svg>`;
+  return svg;
 }
-function pieMarker(lat, lon, colors, size = 34){
+function pieMarker(lat,lng,colors,size=30){
   const svg = drawPieSVG(colors,size);
-  return L.marker([lat,lon], {
-    icon: L.divIcon({ html: svg, className:'', iconSize:[size,size], iconAnchor:[size/2,size/2] })
-  });
+  return L.marker([lat,lng], { icon: L.divIcon({ html: svg, className: '', iconSize: [size,size], iconAnchor:[size/2,size/2] }) });
 }
 
-/* ======================================================
-   Map init
-   ====================================================== */
-L.Map.mergeOptions({ tap: false }); // better touch behavior on some devices
+/* ===========================
+   Map & Rendering
+=========================== */
 const map = L.map('map').setView([26.8,30.8],6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 let markerLayer = L.layerGroup().addTo(map);
 
-/* ======================================================
-   Rendering logic
-   ====================================================== */
-function buildLegendForMode(mode){
-  const box = document.getElementById('legend');
-  const cmap = colorAssignments[mode] || {};
-  let html = '<strong>Legend</strong>';
-  html += '<div style="margin-top:6px">';
-  Object.keys(cmap).forEach(k => {
-    html += `<div class="legend-item"><div class="legend-swatch" style="background:${cmap[k]}"></div>${k}</div>`;
+function groupByPlace(rows){
+  const g = {};
+  rows.forEach(r=>{
+    const key = safe(r.English);
+    if(!g[key]) g[key] = [];
+    g[key].push(r);
   });
-  html += '</div>';
-  box.innerHTML = html;
+  return g;
 }
 
-function render(mode = 'semantic_major'){
+function getValsForMode(rows, mode){
+  const all = [];
+  rows.forEach(r=>{
+    let raw = "N/A";
+    if(mode === 'semantic_major') raw = safe(r["Semantic Type (Major)"]);
+    else if(mode === 'semantic_minor') raw = safe(r["Semantic Type (Specific)"]);
+    else if(mode === 'morphology') raw = safe(r["Morphological Type"]);
+    else if(mode === 'fingerspelling') raw = safe(r["Related to a fingerspelling"]);
+    else if(mode === 'phonology') raw = safe(r["Phonological Type"]);
+    else if(mode === 'body_indexical') raw = safe(r["Body-Indexical"]);
+    else if(mode === 'food') raw = safe(r["Food-related"]);
+    else if(mode === 'handshape') raw = safe(r["Handshape Iconicity"]);
+    else if(mode === 'movementIcon') raw = safe(r["Movement Iconicity"]);
+    else if(mode === 'plurality') raw = safe(r["Plurality"]);
+    if(['semantic_major','semantic_minor','phonology','handshape','movementIcon','plurality'].includes(mode)){
+      const parts = parseCategories(raw);
+      parts.forEach(p => all.push(p));
+    } else {
+      all.push(normalizeToken(raw));
+    }
+  });
+  return all.length ? all : ["N/A"];
+}
+
+function updateLegend(mode){
+  const lg = document.getElementById('legend');
+  const cmap = colorMaps[mode] || {};
+  let html = `<strong>Legend — ${mode.replace(/_/g,' ')}</strong><br/>`;
+  Object.keys(cmap).forEach(k => {
+    html += `<div class="legend-entry"><span style="background:${cmap[k]}"></span>${k}</div>`;
+  });
+  lg.innerHTML = html;
+}
+
+function render(mode='semantic_major'){
   markerLayer.clearLayers();
-  if(!DATA || Object.keys(DATA).length === 0){
-    // nothing to render yet
-    buildLegendForMode(mode);
-    return;
-  }
+  const groups = groupByPlace(data);
 
-  Object.keys(DATA).forEach(place => {
-    const entry = DATA[place];
-    if(!entry || !entry.variants || !entry.variants.length) return;
+  for(const place in groups){
+    const rows = groups[place];
+    const rowWithCoords = rows.find(r=> r.Latittude !== undefined && r.Latittude !== null && !isNaN(Number(r.Latittude)));
+    if(!rowWithCoords) continue;
+    const lat = Number(rowWithCoords.Latittude);
+    const lng = Number(rowWithCoords.Longitude);
+    if(isNaN(lat) || isNaN(lng)) continue;
 
-    // find first valid coords
-    const firstCoords = (entry.lat !== undefined && entry.lon !== undefined) ? {lat: Number(entry.lat), lon: Number(entry.lon)} : null;
-    if(!firstCoords || isNaN(firstCoords.lat) || isNaN(firstCoords.lon)) return;
+    const vals = getValsForMode(rows, mode).map(v => normalizeToken(v));
+    const unique = Array.from(new Set(vals));
 
-    // collect values depending on mode; allow multi-values for semantic_major/minor and phonology
-    let allVals = [];
-    entry.variants.forEach(v => {
-      if(mode === 'phonology'){
-        // parse categories and normalize each
-        const raw = safe(v.phonology);
-        const cats = parseCategories(raw).map(c => normalizePhonology(c));
-        allVals.push(...cats);
-      } else if(mode === 'semantic_major'){
-        allVals.push(...parseCategories(safe(v.semantic_major)));
-      } else if(mode === 'semantic_minor'){
-        allVals.push(...parseCategories(safe(v.semantic_minor)));
-      } else if(mode === 'morphology'){
-        allVals.push(safe(v.morphology));
-      } else if(mode === 'fingerspelling'){
-        allVals.push(safe(v.fingerspelling));
-      } else if(mode === 'body_indexical'){
-        allVals.push(safe(v.body_indexical));
-      } else if(mode === 'food'){
-        allVals.push(safe(v.food));
-      } else if(mode === 'handshape'){
-        allVals.push(safe(v.handshape));
-      } else if(mode === 'movementIcon'){
-        // movementIcon may contain slashes/commas; keep multiple if present
-        allVals.push(...parseCategories(safe(v.movementIcon)));
-      } else if(mode === 'plurality'){
-        allVals.push(safe(v.plurality));
-      } else {
-        allVals.push(safe(v[mode] || v[mode]));
+    const colors = unique.map(k => {
+      if(!colorMaps[mode] || colorMaps[mode][k] === undefined) {
+        return ensureColorFor(mode, k);
       }
+      return colorMaps[mode][k];
     });
 
-    if(allVals.length === 0) allVals = ['N/A'];
-    // normalize values (trim) and unique
-    const unique = Array.from(new Set(allVals.map(x => safe(x))));
-
-    // ensure colors exist for each unique value (use ensureColor)
-    const sliceColors = unique.map(u => ensureColor(u, mode));
-
-    // build marker: pie if multiple values, circle if single
     let marker;
     if(unique.length > 1){
-      marker = pieMarker(firstCoords.lat, firstCoords.lon, sliceColors, 34);
+      marker = pieMarker(lat, lng, colors, 30);
     } else {
-      const fill = sliceColors[0] || '#999';
-      marker = L.circleMarker([firstCoords.lat, firstCoords.lon], {
-        radius: 9,
-        fillColor: fill,
-        color: 'black',
-        weight: 2,
-        fillOpacity: 0.95
-      });
+      const key = unique[0] || "N/A";
+      const fill = (colorMaps[mode] && colorMaps[mode][key]) ? colorMaps[mode][key] : ensureColorFor(mode, key);
+      marker = L.circleMarker([lat,lng], { radius: 8, color: fill, fillColor: fill, fillOpacity: 0.95, weight: 1 });
     }
 
-    // build popup: video first, then fields; display "N/A" for missing
-    let popup = `<div class="popup-box"><h3>${place}</h3><div class="popup-scroll">`;
-    entry.variants.forEach((v,i) => {
+    let popup = `<div class="popup-scroll">`;
+    rows.forEach(r=>{
+      const url = safe(r.Link);
+      const hasVid = url !== "N/A" && url.toLowerCase().includes("youtube");
       popup += `<div class="sign-entry">`;
-      // video key: accept video or video_link or Link or video property
-      const vid = v.video || v.video_link || v.Link || v.videoUrl || v.videoURL || v.link;
-      const vurl = safe(vid);
-      if(vurl !== 'N/A' && vurl.toLowerCase().includes('youtube')){
-        const embed = vurl.replace('watch?v=','embed/');
-        popup += `<iframe src="${embed}" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+      if(hasVid) {
+        popup += `<iframe src="${url.replace('watch?v=','embed/')}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
       }
-      popup += `<strong>Gloss:</strong> ${safe(v.gloss)}<br/>`;
-      popup += `<strong>Folk etymology:</strong> ${safe(v.folk)}<br/>`;
-      popup += `<strong>Semantic Major:</strong> ${safe(v.semantic_major)}<br/>`;
-      popup += `<strong>Semantic Minor:</strong> ${safe(v.semantic_minor)}<br/>`;
-      popup += `<strong>Morphology:</strong> ${safe(v.morphology)}<br/>`;
-      popup += `<strong>Phonology:</strong> ${safe(v.phonology)}<br/>`;
-      popup += `<strong>Body-Indexical:</strong> ${safe(v.body_indexical)}<br/>`;
-      popup += `<strong>Fingerspelling:</strong> ${safe(v.fingerspelling)}<br/>`;
-      popup += `<strong>Food-related:</strong> ${safe(v.food)}<br/>`;
-      popup += `<strong>Handshape:</strong> ${safe(v.handshape)}<br/>`;
-      popup += `<strong>Movement Iconicity:</strong> ${safe(v.movementIcon)}<br/>`;
-      popup += `<strong>Plurality:</strong> ${safe(v.plurality)}<br/>`;
-      if(safe(v.note) !== 'N/A') popup += `<strong>Notes:</strong> ${safe(v.note)}<br/>`;
+      popup += `<strong>Gloss:</strong> ${safe(r.Gloss)}<br/>`;
+      popup += `<strong>Folk etymology:</strong> ${safe(r["Folk Etymology"])}<br/>`;
+      popup += `<strong>Semantic Type Major:</strong> ${safe(r["Semantic Type (Major)"])}<br/>`;
+      popup += `<strong>Semantic Type Minor:</strong> ${safe(r["Semantic Type (Specific)"])}<br/>`;
+      popup += `<strong>Morphological Type:</strong> ${safe(r["Morphological Type"])}<br/>`;
+      popup += `<strong>Fingerspelling:</strong> ${safe(r["Related to a fingerspelling"])}<br/>`;
+      popup += `<strong>Phonological Type:</strong> ${safe(r["Phonological Type"])}<br/>`;
+      popup += `<strong>Body-Indexical:</strong> ${safe(r["Body-Indexical"])}<br/>`;
+      popup += `<strong>Food-related:</strong> ${safe(r["Food-related"])}<br/>`;
+      popup += `<strong>Handshape Iconicity:</strong> ${safe(r["Handshape Iconicity"])}<br/>`;
+      popup += `<strong>Movement Iconicity:</strong> ${safe(r["Movement Iconicity"])}<br/>`;
+      popup += `<strong>Plurality:</strong> ${safe(r["Plurality"])}<br/>`;
+      if(safe(r.Notes) !== "N/A") popup += `<strong>Notes:</strong> ${safe(r.Notes)}<br/>`;
       popup += `</div>`;
     });
-    popup += `</div></div>`;
+    popup += `</div>`;
 
-    marker.bindPopup(popup, {maxWidth: 440});
+    marker.bindPopup(`<h3>${place}</h3>` + popup);
     marker.addTo(markerLayer);
-  });
-
-  // update legend after adding colors
-  buildLegendForMode(mode);
-
-  // zoom to markers if first render
-  if(markerLayer.getLayers().length){
-    try{
-      const group = L.featureGroup(markerLayer.getLayers());
-      map.fitBounds(group.getBounds().pad(0.15));
-    }catch(e){}
   }
+
+  updateLegend(mode);
 }
 
-/* ======================================================
-   Info text you already provided (kept exact form)
-   ====================================================== */
+/* ===========================
+   UI: radio buttons + editable multi-line info panel
+   Your provided infoStore is embedded exactly as given.
+=========================== */
+const MODES = [
+  { id: 'semantic_major', label: 'Semantic Major' },
+  { id: 'semantic_minor', label: 'Semantic Minor' },
+  { id: 'morphology', label: 'Morphology' },
+  { id: 'fingerspelling', label: 'Fingerspelling' },
+  { id: 'phonology', label: 'Phonological Type' },
+  { id: 'body_indexical', label: 'Body-Indexical' },
+  { id: 'food', label: 'Food-related' },
+  { id: 'handshape', label: 'Handshape Iconicity' },
+  { id: 'movementIcon', label: 'Movement Iconicity' },
+  { id: 'plurality', label: 'Plurality' }
+];
+
+const radioList = document.getElementById('radioList');
+const infoModeSelect = document.getElementById('infoModeSelect');
+const infoEditArea = document.getElementById('infoEditArea');
+const infoTitle = document.getElementById('infoTitle');
+const toggleInfoBtn = document.getElementById('toggleInfo');
+const resetInfoBtn = document.getElementById('resetInfo');
+
 const infoStore = {
-  semantic_major: `Major categories from Blair, D., & Tent, J. (2021). A revised typology of place-naming. Names, 69(4), 31-47.
-Descriptive:  Using a name denoting an inherent characteristic of the feature
-Associative: Using a name denoting something associated with the feature or its context
-Occurrent: Using a name recording an event, incident, occasion or date when the feature was named
-Copied: Copying the name-form from another place or from another language
-Eponymous: Using the name of a person or other named entity by using a proper name, title, or eponym substitute as a toponym`,
-
-  semantic_minor: `Subcategories of major semantic categories from Blair, D., & Tent, J. (2021). A revised typology of place-naming. Names, 69(4), 31-47.`,
-
-  morphology: `Four-way morphological typology based on De Sousa, A. M., & De Quadros, R. M. (2021). Toponymy in libras... 
-Simplex: a single lexeme forms the toponym
-Compound: multiple lexemes form the toponym
-Hybrid: toponym simultaneous includes a formant from the spoken language`,
-
-  fingerspelling: `Yes/No — whether the sign uses letters from the manual alphabet, including lexicalized reductions of fingerspellings.`,
-
-  phonology: `Basic phonological type: one-handed, two handed with symmetrical articulators, or two-handed with asymmetrical articulators`,
-
-  body_indexical: `Yes/No — whether the sign indexes a body part.`,
-
-  food: `Yes/No — whether the toponym is food-related.`,
-
-  handshape: `Object: the handshape configuration resembles an object
-Handling: the handshape represents the way a person holds an object
-Hands-as-Hands: the hands represent the way one actually uses ones hands
-Indexical: technically not a type of iconicity, the hand is merely used to index something`,
-
-  movementIcon: `Movement-as-Shape: the movement of the articulators traces the shape of a represented object
-Movement-as-Movement: the movement of the articulators represents the way an object is displaced in space over time
-Movement-as-Plural: the movement of the articulators represents multiple objects
-Indexical: the movement is not iconic and only to draw attention to the articulator itself
-None: there is no movement or only epenthetic movement`,
-
-  plurality: `Plurality can be represented simultaneously by the configuration of the articulators.
-Hands: the handedness represents multiple entities or parts of an entities
-Selected fingers: the fingers used on the active articulator represent multiple entities or parts of an entity (e.g. the legs of animals in ZAQAZIQ)
-Movement: the movement of the articulators represents multiple entities displaced in space`
+  semantic_major: "Major categories from Blair, D., & Tent, J. (2021). A revised typology of place-naming. Names, 69(4), 31-47.\n Descriptive:  Using a name denoting an inherent characteristic of the feature \n Associative: Using a name denoting something associated with the feature or its context\n Occurrent: Using a name recording an event, incident, occasion or date when the feature was named\n Copied: Copying the name-form from another place or from another language\n Eponymous: Using the name of a person or other named entity by using a proper name, title, or eponym substitute as a toponym",
+  semantic_minor: "Subcategories of major semantic categories from Blair, D., & Tent, J. (2021). A revised typology of place-naming. Names, 69(4), 31-47.",
+  morphology: "Four-way morphological typology based on De Sousa, A. M., & De Quadros, R. M. (2021). Toponymy in libras (Brazilian sign language): Formal and semantic-motivational analysis of the signs that name the cities of acre. Sign Language Studies, 22(1), 75-105.\n Simplex: a single lexeme forms the toponym\n Compound: multiple lexemes form the toponym\n Hybrid: toponym simultaneous includes a formant from the spoken language",
+  fingerspelling: "Yes/No — whether the sign uses letters from the manual alphabet, including lexicalized reductions of fingerspellings.",
+  phonology: "Basic phonological type: one-handed, two handed with symmetrical articulators, or two-handed with asymmetrical articulators",
+  body_indexical: "Yes/No — whether the sign indexes a body part.",
+  food: "Yes/No — whether the toponym is food-related.",
+  handshape: "Object: the handshape configuration resembles an object\n Handling: the handshape represents the way a person holds an object\n Hands-as-Hands: the hands represent the way one actually uses ones hands\n Indexical: technically not a type of iconicity, the hand is merely used to index something",
+  movementIcon: "Movement-as-Shape: the movement of the articulators traces the shape of a represented object\n Movement-as-Movement: the movement of the articulators represents the way an object is displaced in space over time\n Movement-as-Plural: the movement of the articulators represents multiple objects\n Indexical: the movement is not iconic and only to draw attention to the articulator itself\n None: there is no movement or only epenthetic movement",
+  plurality: "Plurality can be represented simultaneously by the configuration of the articulators. \n Hands: the handedness represents multiple entities or parts of an entities\n Selected fingers: the fingers used on the active articulator represent multiple entities or parts of an entity (e.g. the legs of animals in ZAQAZIQ)\n Movement: the movement of the articulators represents multiple entities displaced in space"
 };
 
-/* ======================================================
-   UI interactions
-   ====================================================== */
-document.querySelectorAll('input[name="colorMode"]').forEach(r => {
-  r.addEventListener('change', e => {
-    const mode = e.target.value;
-    // rebuild legend colors for known values by scanning DATA for present values
-    preseedColorsForMode(mode);
-    render(mode);
-    // update infoBox if open
-    const infoBox = document.getElementById('infoBox');
-    if(infoBox.style.display === 'block') infoBox.textContent = infoStore[mode] || '';
-  });
-});
-
-document.getElementById('toggleInfo').addEventListener('click', () => {
-  const box = document.getElementById('infoBox');
-  const mode = document.querySelector('input[name="colorMode"]:checked').value;
-  if(box.style.display === 'block'){
-    box.style.display = 'none';
-    document.getElementById('toggleInfo').textContent = 'Show category info';
-  } else {
-    box.style.display = 'block';
-    box.textContent = infoStore[mode] || '';
-    document.getElementById('toggleInfo').textContent = 'Hide category info';
-  }
-});
-
-// Pre-seed colorAssignments for mode by scanning values in DATA so legend shows present categories
-function preseedColorsForMode(mode){
-  if(!DATA || Object.keys(DATA).length === 0) return;
-  if(!colorAssignments[mode]) colorAssignments[mode] = (seedColors[mode]) ? Object.assign({}, seedColors[mode]) : {};
-  // scan DATA to find all present values for this mode and ensure a color is assigned
-  Object.keys(DATA).forEach(place => {
-    const e = DATA[place];
-    if(!e || !Array.isArray(e.variants)) return;
-    e.variants.forEach(v => {
-      if(mode === 'phonology'){
-        parseCategories(safe(v.phonology)).forEach(c => {
-          const norm = normalizePhonology(c);
-          ensureColor(norm, mode);
-        });
-      } else if(mode === 'semantic_major'){
-        parseCategories(safe(v.semantic_major)).forEach(c => ensureColor(c, mode));
-      } else if(mode === 'semantic_minor'){
-        parseCategories(safe(v.semantic_minor)).forEach(c => ensureColor(c, mode));
-      } else {
-        // single-valued modes may still have multiple variants; ensure colors
-        const val = safe(v[mode]);
-        ensureColor(val, mode);
-      }
+// populate radios and info select
+function buildUI(){
+  radioList.innerHTML = "";
+  infoModeSelect.innerHTML = "";
+  MODES.forEach((m, idx) => {
+    const div = document.createElement('div');
+    div.className = 'radio-item';
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'colorMode';
+    input.id = 'r_' + m.id;
+    input.value = m.id;
+    input.checked = idx === 0;
+    input.addEventListener('change', () => {
+      render(m.id);
+      infoTitle.textContent = `Category Info — ${m.label}`;
+      infoEditArea.textContent = infoStore[m.id] || "";
+      infoModeSelect.value = m.id;
     });
+    const label = document.createElement('label');
+    label.htmlFor = input.id;
+    label.textContent = m.label;
+    div.appendChild(input);
+    div.appendChild(label);
+    radioList.appendChild(div);
+
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.label;
+    infoModeSelect.appendChild(opt);
   });
+
+  // initial selection
+  infoModeSelect.value = MODES[0].id;
+  infoEditArea.textContent = infoStore[MODES[0].id] || "";
+  infoTitle.textContent = `Category Info — ${MODES[0].label}`;
 }
+buildUI();
 
-/* ======================================================
-   Initial preseed + render (if DATA already present)
-   ====================================================== */
-preseedColorsForMode('semantic_major');
+// toggle info panel
+let infoVisible = true;
+toggleInfoBtn.addEventListener('click', ()=>{
+  infoVisible = !infoVisible;
+  document.getElementById('infoPanel').style.display = infoVisible ? 'block' : 'none';
+  toggleInfoBtn.textContent = infoVisible ? 'Hide info' : 'Show info';
+});
+
+// change info panel mode using select
+infoModeSelect.addEventListener('change', (e)=>{
+  const id = e.target.value;
+  const mode = MODES.find(m => m.id === id);
+  infoTitle.textContent = `Category Info — ${mode.label}`;
+  infoEditArea.textContent = infoStore[id] || "";
+});
+
+// save edited info on input (in-page only)
+infoEditArea.addEventListener('input', (e)=>{
+  const id = infoModeSelect.value;
+  infoStore[id] = e.target.innerText;
+});
+
+// reset info placeholder for current mode
+resetInfoBtn.addEventListener('click', ()=>{
+  const id = infoModeSelect.value;
+  infoEditArea.textContent = infoStore[id] || "";
+});
+
+// fit button
+document.getElementById('fitBtn').addEventListener('click', fitMapToMarkers);
+
+/* ===========================
+   Initial render & hook
+=========================== */
 render('semantic_major');
-
+function fitMapToMarkers(){
+  const layers = markerLayer.getLayers();
+  if(!layers.length) return;
+  const group = L.featureGroup(layers);
+  map.fitBounds(group.getBounds().pad(0.12));
+}
 </script>
 </body>
 </html>
