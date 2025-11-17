@@ -1395,6 +1395,18 @@ function updateLegend(mode){
   });
   lg.innerHTML = html;
 }
+function normalizePhonology(value) {
+  if (!value) return "N/A";
+  const v = value.toLowerCase().trim();
+
+  if (v.includes("asym")) return "Asymmetrical";
+  if (v.includes("symmetrical") && !v.includes("asym"))
+    return "Symmetrical";
+  if (v.includes("one-handed") || v.includes("one handed"))
+    return "One-handed";
+
+  return "N/A";
+}
 
 function render(mode='semantic_major'){
   markerLayer.clearLayers();
@@ -1417,6 +1429,14 @@ function render(mode='semantic_major'){
       }
       return colorMaps[mode][k];
     });
+
+    let values = variants.map(v => {
+    if (colorMode === "phonology") {
+      return normalizePhonology(v.phonology);
+    }
+    return v[colorMode] || "N/A";
+  });
+
 
     let marker;
     if(unique.length > 1){
