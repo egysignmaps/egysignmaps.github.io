@@ -558,7 +558,7 @@ const data = [
         "Semantic Type (Major)": "Copied",
         "Semantic Type (Specific)": "Linguistic",
         "Notes": "Homophonous with some other lexicalized fingerspellings: WHEN, DAY, and TEA",
-        "Related to a fingerspelling": "no",
+        "Related to a fingerspelling": "yes",
         "Phonological Type": "one-handed",
         "Body-Indexical": "yes",
         "Food-related": "no",
@@ -1192,7 +1192,7 @@ function parseCategories(value){
   if(raw === "?" || raw.toUpperCase() === "N/A") return ["N/A"];
 
   // Now we safely split the multi-valued types
-  return raw.split(/[,\/\+]/)
+  return raw.split(/[,\+]/)
     .map(v => v.trim())
     .filter(v => v)
     .map(v => {
@@ -1207,106 +1207,42 @@ function parseCategories(value){
     });
 }
 
-function normalizeToken(tok){
-  const v = String(tok).trim();
-  const low = v.toLowerCase();
-  if (low === "?" || low === "n/a" || low === "na") return "N/A";
-
-  // semantic / minor
-  if (low.includes("structure")) return "Structure";
-  if (low.includes("relational")) return "Relational";
-  if (low.includes("functional")) return "Functional";
-  if (low.includes("occupation")) return "Occupation/Activity";
-  if (low.includes("activity") && !low.includes("occupation")) return "Occupation/Activity";
-  if (low.includes("environment") || low.includes("enviroment")) return "Environment";
-  if (low.includes("linguistic")) return "Linguistic";
-  if (low.includes("topographic")) return "Topographic";
-  if (low.includes("locational")) return "Locational";
-  if (low.includes("notable") || low.includes("person")) return "Notable Person";
-  if (low.includes("occasion")) return "Occasion";
-  if (low.includes("incident")) return "Incident";
-  if (low.includes("copied")) return "Copied";
-  if (low.includes("descriptive")) return "Descriptive";
-  if (low.includes("associative")) return "Associative";
-  if (low.includes("eponym")) return "Eponymous";
-
-  // phonology
-  if (low.includes("one-handed") || low.includes("one handed") || low.includes("onehanded")) return "one-handed";
-  if (low.includes("symmetrical") || low.includes("symetric")) return "symmetrical";
-  if (low.includes("asymmetrical") || low.includes("asymetric")) return "asymmetrical";
-  if (low.includes("one-handed + symmetrical") || low.includes("one-handed+symmetrical") ) return "one-handed + symmetrical";
-  if (low.includes("symmetrical + asymmetrical") || low.includes("symmetrical+asymmetrical")) return "symmetrical + asymmetrical";
-
-  // body indexical
-  if (low === "yes" || low === "y") return "yes";
-  if (low === "no" || low === "n") return "no";
-
-  // Food-related
-  if (low === "yes" || low === "y" || low.includes("food") ) return "yes";
-  if (low === "no" || low === "n") return "no";
-
-  // Handshape Iconicity
-  if (low.includes("object + hands") || low.includes("object+hands") || low.includes("object and hands")) return "Object + Hands as Hands";
-  if (low.includes("hands as hands")) return "Hands as Hands";
-  if (low.includes("object")) return "Object";
-  if (low.includes("indexical")) return "Indexical";
-  if (low.includes("handling")) return "Handling";
-  if (low.includes("ambig")) return "Ambiguous";
-
-  // Movement Iconicity
-  if (low.includes("movement as shape")) return "Movement-as-Shape";
-  if (low.includes("movement as movement")) return "Movement-as-Movement";
-  if (low.includes("movement as plural")) return "Movement-as-Plural";
-  if (low.includes("ambig")) return "Ambiguous";
-  if (low.includes("none")) return "None";
-  if (low === "n/a") return "N/A";
-
-  // Plurality
-  if (low.includes("hands")) return "Hands";
-  if (low.includes("selected fingers")) return "Selected Fingers";
-  if (low.includes("movement")) return "Movement";
-  if (low.includes("none")) return "None";
-
-  // fallback: title-case
-  return v.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1));
-}
-
 /* ===========================
    Color maps
 =========================== */
 const colorMaps = {
-  semantic_major:{
-    "Descriptive":"#1f78b4","Associative":"#33a02c","Occurrent":"#6a3d9a","Copied":"#e31a1c","Eponymous":"#17a2a6","N/A":"gray"
-  },
-  semantic_minor:{
-    "Relational":"#3182bd","Structure":"#756bb1","Functional":"#31a354",
-    "Occupation/Activity":"#ff7f00","Environment":"#b15928","Linguistic":"#1f78b4",
-    "Topographic":"#6a3d9a","Locational":"#33a02c","Notable Person":"#e31a1c",
-    "Occasion":"#fdb462","N/A":"gray"
-  },
-  morphology:{
-    "simplex":"#4daf4a","compound":"#984ea3","hybrid":"#377eb8","hybrid compound":"#377eb8","N/A":"gray"
-  },
-  fingerspelling:{ "yes":"#e41a1c","no":"#377eb8","N/A":"gray" },
-  phonology:{
-    "one-handed":"#8dd3c7","symmetrical":"#ffffb3","asymmetrical":"#bebada",
-    "one-handed + symmetrical":"#fb8072","symmetrical + asymmetrical":"#80b1d3","N/A":"gray","?":"gray"
-  },
-  body_indexical:{
-    "yes":"#fdb462","no":"#b3de69","?":"#fccde5","N/A":"gray"
-  },
-  food:{
-    "yes":"#e78ac3","no":"#a6cee3","N/A":"gray"
-  },
-  handshape:{
-    "Object":"#66c2a5","Indexical":"#fc8d62","Handling":"#8da0cb","Hands as Hands":"#e5c494","Object + Hands as Hands":"#b3b3b3","Ambiguous":"#fb9a99","N/A":"gray"
-  },
-  movementIcon:{
-    "Movement-as-Shape":"#8dd3c7","Movement-as-Movement":"#ffffb3","Movement-as-Plural":"#bebada","Ambiguous":"#fb8072","None":"#ccebc5","N/A":"gray"
-  },
-  plurality:{
-    "Hands":"#1f78b4","Movement":"#33a02c","Selected Fingers":"#e31a1c","None":"#999999","N/A":"gray"
-  }
+  // semantic_major:{
+  //   "Descriptive":"#1f78b4","Associative":"#33a02c","Occurrent":"#6a3d9a","Copied":"#e31a1c","Eponymous":"#17a2a6","N/A":"gray"
+  // },
+  // semantic_minor:{
+  //   "Relational":"#3182bd","Structure":"#756bb1","Functional":"#31a354",
+  //   "Occupation/Activity":"#ff7f00","Environment":"#b15928","Linguistic":"#1f78b4",
+  //   "Topographic":"#6a3d9a","Locational":"#33a02c","Notable Person":"#e31a1c",
+  //   "Occasion":"#fdb462","N/A":"gray"
+  // },
+  // morphology:{
+  //   "simplex":"#4daf4a","compound":"#984ea3","hybrid":"#377eb8","hybrid compound":"#377eb8","N/A":"gray"
+  // },
+  // fingerspelling:{ "yes":"#e41a1c","no":"#377eb8","N/A":"gray" },
+  // phonology:{
+  //   "one-handed":"#8dd3c7","symmetrical":"#ffffb3","asymmetrical":"#bebada",
+  //   "one-handed + symmetrical":"#fb8072","symmetrical + asymmetrical":"#80b1d3","N/A":"gray","?":"gray"
+  // },
+  // body_indexical:{
+  //   "yes":"#fdb462","no":"#b3de69","?":"#fccde5","N/A":"gray"
+  // },
+  // food:{
+  //   "yes":"#e78ac3","no":"#a6cee3","N/A":"gray"
+  // },
+  // handshape:{
+  //   "Object":"#66c2a5","Indexical":"#fc8d62","Handling":"#8da0cb","Hands as Hands":"#e5c494","Object + Hands as Hands":"#b3b3b3","Ambiguous":"#fb9a99","N/A":"gray"
+  // },
+  // movementIcon:{
+  //   "Movement-as-Shape":"#8dd3c7","Movement-as-Movement":"#ffffb3","Movement-as-Plural":"#bebada","Ambiguous":"#fb8072","None":"#ccebc5","N/A":"gray"
+  // },
+  // plurality:{
+  //   "Hands":"#1f78b4","Movement":"#33a02c","Selected Fingers":"#e31a1c","None":"#999999","N/A":"gray"
+  // }
 };
 
 function ensureColorFor(mode, key){
@@ -1380,7 +1316,7 @@ function getValsForMode(rows, mode){
       const parts = parseCategories(raw);
       parts.forEach(p => all.push(p));
     } else {
-      all.push(normalizeToken(raw));
+      all.push(raw);
     }
   });
   return all.length ? all : ["N/A"];
@@ -1408,7 +1344,7 @@ function render(mode='semantic_major'){
     const lng = Number(rowWithCoords.Longitude);
     if(isNaN(lat) || isNaN(lng)) continue;
 
-    const vals = getValsForMode(rows, mode).map(v => normalizeToken(v));
+    const vals = getValsForMode(rows, mode).map(v => v);
     const unique = Array.from(new Set(vals));
 
     const colors = unique.map(k => {
