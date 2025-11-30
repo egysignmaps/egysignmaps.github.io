@@ -547,6 +547,55 @@
 #legendWrap.open {
   display: block;
 }
+/* ===========================================================
+   DESKTOP vs MOBILE PANEL LAYOUT FIX
+   Prevent Info Panel from overlapping Legend on desktop
+   =========================================================== */
+
+/* ----- Desktop Specific (min-width: 701px) ----- */
+@media (min-width: 701px) {
+
+  /* Reduce the height of panels and stack tighter */
+  .controls {
+    top: 60px;
+    max-height: 25vh;        /* smaller on desktop */
+    width: 320px;
+  }
+
+  #infoPanel {
+    top: calc(60px + 25vh + 20px);   /* reduced stack height */
+    max-height: 25vh;
+    width: 320px;
+  }
+
+  /* Legend stays bottom-left but with more spacing */
+  #legendWrap {
+    bottom: 70px;
+    max-height: 35vh;
+  }
+}
+
+/* ----- Mobile Specific (max-width: 700px) ----- */
+@media (max-width: 700px) {
+
+  /* Larger panel heights for mobile */
+  .controls {
+    top: 60px;
+    max-height: 35vh;
+    width: 320px;
+  }
+
+  #infoPanel {
+    top: calc(60px + 35vh + 20px);
+    max-height: 35vh;
+    width: 320px;
+  }
+
+  #legendWrap {
+    bottom: 60px;
+    max-height: 40vh;
+  }
+}
 
 </style>
 </head>
@@ -2064,6 +2113,19 @@ if (infoToggleBtn2) {
     if (info) info.classList.toggle("open");
   };
 }
+window.addEventListener("load", () => {
+  const isMobile = window.innerWidth <= 700;
+
+  if (!isMobile) {
+    // Desktop: open Color By and Info panels by default
+    document.querySelector(".controls")?.classList.add("open");
+    document.querySelector("#infoPanel")?.classList.add("open");
+  } else {
+    // Mobile: ensure both are closed by default
+    document.querySelector(".controls")?.classList.remove("open");
+    document.querySelector("#infoPanel")?.classList.remove("open");
+  }
+});
 
 
 </script>
