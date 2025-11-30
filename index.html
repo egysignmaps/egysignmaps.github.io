@@ -612,6 +612,128 @@
     max-height: 35vh !important;
   }
 }
+/* ===========================================================
+   FINAL UNIFIED LAYOUT — OPTION A (Stacked Left Panels)
+   Legend stays bottom-left
+   -----------------------------------------------------------
+   - Desktop:
+       • Color By and Info panels open by default
+       • Stacked vertically on the left
+       • Legend bottom-left, never overlapping
+   - Mobile:
+       • All panels closed by default (use toggles)
+       • Mobile drawers remain working
+   =========================================================== */
+
+/* -------- DESKTOP (min-width: 701px) -------- */
+@media (min-width: 701px) {
+
+  /* Hide mobile toggles on desktop */
+  #controlsToggle,
+  #infoToggle,
+  #legendToggle {
+    display: none !important;
+  }
+
+  /* OPEN BY DEFAULT on desktop */
+  .controls,
+  #infoPanel,
+  #legendWrap {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* COLOR BY PANEL (top-left, fixed width) */
+  .controls {
+    position: fixed !important;
+    top: 70px;
+    left: 10px;
+    width: 320px;
+    max-height: 28vh;        /* desktop height */
+    overflow-y: auto;
+    background: rgba(255,255,255,0.98);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 3000 !important;
+  }
+
+  /* INFO PANEL (stacked beneath Color By) */
+  #infoPanel {
+    position: fixed !important;
+    top: calc(70px + 28vh + 20px);  /* below Color By panel */
+    left: 10px;
+    width: 320px;
+    max-height: 28vh;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.98);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 3000 !important;
+  }
+
+  /* LEGEND PANEL (bottom-left) */
+  #legendWrap {
+    position: fixed !important;
+    left: 10px;
+    bottom: 10px;
+    width: 320px;
+    max-height: 28vh;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.98);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 2500 !important;
+  }
+}
+
+/* -------- MOBILE (max-width: 700px) -------- */
+@media (max-width: 700px) {
+
+  /* Show toggle buttons */
+  #controlsToggle,
+  #infoToggle,
+  #legendToggle {
+    display: inline-block !important;
+  }
+
+  /* Panels start CLOSED on mobile */
+  .controls,
+  #infoPanel,
+  #legendWrap {
+    display: none; /* opened only by JS toggles */
+  }
+
+  /* (Your existing mobile drawer styles still apply) */
+}
+/* ===========================================================
+   FIX: Proper desktop legend placement (bottom-left)
+   =========================================================== */
+
+@media (min-width: 701px) {
+  #legendWrap {
+    position: fixed !important;
+    left: 10px !important;
+    bottom: 10px !important;
+
+    /* Same width and style as your left-column panels */
+    width: 320px !important;
+
+    /* Keep height consistent */
+    max-height: 28vh !important;
+
+    /* Ensure the legend is visible if your JS wants it */
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    /* Make sure it stays BELOW the Info panel */
+    z-index: 2500 !important;
+  }
+}
 
 </style>
 </head>
