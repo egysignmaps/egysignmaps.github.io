@@ -6,32 +6,597 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-  #map { height:100vh; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+
+  #map {
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Desktop: static Color By controls panel */
   .controls {
-    position:absolute; top:10px; left:10px; z-index:1000; background:white;
-    padding:12px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.18); width:300px;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    width: 300px;
+    max-height: 80vh;
+    overflow-y: auto;
   }
-  .controls h4 { margin:0 0 8px 0; font-size:14px; }
-  .radio-list { max-height:220px; overflow-y:auto; padding-right:6px; margin-top:6px; }
-  .radio-item { display:flex; align-items:center; margin-bottom:6px; gap:8px; }
-  .radio-item input { transform:scale(1.05); }
-  #legendWrap { position:absolute; left:10px; bottom:10px; z-index:1000; width:340px; }
+
+  .controls h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+  }
+
+  .radio-list {
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 6px;
+    margin-top: 6px;
+  }
+
+  .radio-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 8px;
+  }
+
+  .radio-item input {
+    transform: scale(1.05);
+  }
+
+  #legendWrap {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    width: 340px;
+    z-index: 1000;
+  }
+
+  #infoPanel,
+  #legend {
+    background: rgba(255,255,255,0.98);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    font-size: 13px;
+  }
+
+  #legend {
+    max-height: 280px;
+    overflow-y: auto;
+    margin-top: 8px;
+  }
+
+  .legend-entry {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .legend-entry span {
+    width: 16px !important;
+    height: 16px !important;
+    border-radius: 50% !important;
+    display: inline-block !important;
+    margin-right: 8px;
+    border: 1px solid #333 !important;
+  }
+
+  .popup-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  .sign-entry {
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
+    margin-bottom: 10px;
+  }
+
+  iframe {
+    width: 100%;
+    height: 220px;
+    border-radius: 6px;
+  }
+
+  .small-btn {
+    background: #eee;
+    border: none;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .info-mode-select {
+    margin-bottom: 8px;
+    width: 100%;
+  }
+
+  .info-edit {
+    min-height: 72px;
+    max-height: 240px;
+    padding: 8px;
+    border-radius: 6px;
+    background: #fafafa;
+    border: 1px dashed #ddd;
+    outline: none;
+    overflow: auto;
+    white-space: pre-wrap;
+  }
+
+  .info-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+
+  .muted {
+    color: #666;
+    font-size: 12px;
+  }
+
+  /* Toggle buttons: hidden by default, enabled on mobile */
+  #controlsToggle,
+  #legendToggle,
+  #infoToggle {
+    display: none;
+  }
+
+  /* Info panel floating behavior (desktop default) */
   #infoPanel {
-    background: rgba(255,255,255,0.98); padding:10px; border-radius:8px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.18); font-size:13px; margin-bottom:8px;
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    width: 340px;
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: 1200;
+    display: none;
   }
-  #legend { background: rgba(255,255,255,0.98); padding:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.18); font-size:13px; max-height:280px; overflow-y:auto; }
-  .legend-entry { display:flex; align-items:center; margin-bottom:6px; }
-  .legend-entry span { width:16px; height:16px; border-radius:50%; display:inline-block; margin-right:8px; border:1px solid rgba(0,0,0,0.08); }
-  .popup-scroll { max-height:420px; overflow-y:auto; padding-right:8px; }
-  .sign-entry { border-bottom:1px solid #ddd; padding:10px 0; margin-bottom:10px; }
-  iframe { width:100%; height:220px; border-radius:6px; }
-  .small-btn { background:#eee; border:none; padding:6px 8px; border-radius:6px; cursor:pointer; }
-  .info-mode-select { margin-bottom:8px; width:100%; }
-  .info-edit { min-height:72px; max-height:240px; padding:8px; border-radius:6px; background:#fafafa; border:1px dashed #ddd; outline:none; overflow:auto; white-space:pre-wrap; }
-  .info-controls { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; align-items:center; }
-  .muted { color:#666; font-size:12px; }
+
+  #infoPanel.open {
+    display: block;
+  }
+
+  #infoToggle {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 1300;
+    background: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    border: none;
+  }
+  #map {
+  pointer-events: auto !important;
+}
+
+/* Fix for mobile Safari clipping SVG inside divIcons */
+.leaflet-marker-icon {
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Ensure SVG inside marker is visible */
+.leaflet-marker-icon svg {
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+/* Prevent fixed UI panels from blocking marker painting */
+#controlsToggle,
+#infoToggle,
+#legendToggle,
+.controls,
+#infoPanel,
+#legendWrap {
+  pointer-events: auto !important;  /* They can be clicked */
+  z-index: 5000 !important;          /* Above map but non-obstructive */
+}
+
+/* These panes must NOT intercept map rendering */
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-pane,
+.leaflet-control,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane {
+  pointer-events: auto !important;
+}
+
+/* Marker internals should not steal touches on Safari */
+.leaflet-marker-icon *,
+.pie-marker *,
+.pie-marker svg *,
+.pie-slice {
+  pointer-events: none !important;
+}
+
+/* Guarantee divIcons never collapse */
+.pie-marker {
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+/* Mobile-only tweaks for layout safety */
+
+
+  /* ============================================================
+     =================== MOBILE OPTIMIZATIONS ====================
+     ============================================================ */
+
+@media (max-width: 700px) {
+  /* Ensure map is never behind any invisible overlay */
+  #map {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Panels remain interactive but don't block marker drawing */
+  .controls,
+  #infoPanel,
+  #legendWrap {
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(4px);
+    pointer-events: auto !important;
+    z-index: 6000 !important;
+  }
+
+  #controlsToggle,
+  #infoToggle,
+  #legendToggle {
+    z-index: 7000 !important;
+  }
+}
+
+    /* Floating toggle buttons */
+    #controlsToggle,
+    #legendToggle,
+    #infoToggle {
+      display: inline-block;
+    }
+
+    #controlsToggle {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 5000;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      border: none;
+    }
+
+    /* Info stacked under Color By (your option C) */
+    #infoToggle {
+      position: fixed;
+      top: 56px;
+      left: 12px;
+      right: auto;
+      z-index: 5000;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      border: none;
+    }
+
+    #legendToggle {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      z-index: 5000;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      border: none;
+    }
+
+    /* Color By panel as drawer */
+    .controls {
+      position: fixed;
+      top: 100px;
+      left: 10px;
+      right: 10px;
+      max-height: 60vh;
+      overflow-y: auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      display: none;
+      z-index: 4000;
+    }
+
+    .controls.open {
+      display: block;
+    }
+
+    /* Legend as bottom drawer */
+    #legendWrap {
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: 60px;
+      max-height: 50vh;
+      overflow-y: auto;
+      background: rgba(255,255,255,0.98);
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      display: none;
+      z-index: 4000;
+    }
+
+    #legendWrap.open {
+      display: block;
+    }
+
+    /* Info panel as drawer under toggles */
+    #infoPanel {
+      position: fixed;
+      top: 100px;
+      left: 10px;
+      right: 10px;
+      width: auto;
+      max-height: 60vh;
+      z-index: 4000;
+    }
+  }
+
+  /* Extremely small devices */
+  @media (max-width: 400px) {
+    iframe {
+      height: 150px;
+    }
+    .controls,
+    #legendWrap,
+    #infoPanel {
+      max-height: 40vh;
+    }
+  }
+  /* ================================================================
+   OPTION B — STACKED PANELS (Color By above, Info panel below)
+   Prevents overlap on all screen sizes
+   ================================================================ */
+
+/* Toggles remain left side */
+#controlsToggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 7000;
+}
+
+#infoToggle {
+  position: fixed;
+  top: 12px;
+  left: 140px;                  /* offset so it doesn't cover Color By */
+  z-index: 7000;
+}
+
+/* COLOR BY PANEL — anchored under its toggle */
+.controls {
+  position: fixed;
+  top: 60px;                    /* below Color By toggle */
+  left: 10px;
+  right: 10px;
+  max-height: 35vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+.controls.open {
+  display: block;
+}
+
+/* INFO PANEL — anchored BELOW the Color By panel */
+#infoPanel {
+  position: fixed;
+  top: calc(60px + 35vh + 20px);  /* placed below Color By panel */
+  left: 10px;
+  right: 10px;
+  max-height: 35vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+#infoPanel.open {
+  display: block;
+}
+
+/* LEGEND stays bottom-left */
+#legendToggle {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 7000;
+}
+
+#legendWrap {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: 60px;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+#legendWrap.open {
+  display: block;
+}
+/* ================================================================
+   OPTION A — LEFT-ALIGNED MATCHING WIDTH PANELS (STACKED)
+   ================================================================ */
+
+/* TWEAK: Put "Info" toggle immediately to the right of Color By toggle */
+#controlsToggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 7000;
+}
+
+#infoToggle {
+  position: fixed;
+  top: 12px;
+  left: 140px;                /* Moves info toggle out of the way */
+  z-index: 7000;
+}
+
+/* ===== Color By Panel ===== */
+.controls {
+  position: fixed;
+  top: 60px;                  /* Below Color By toggle */
+  left: 10px;
+  width: 320px;               /* <<< PANEL WIDTH HERE */
+  max-height: 35vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+.controls.open {
+  display: block;
+}
+
+/* ===== Info Panel (STACKED BELOW COLOR BY) ===== */
+#infoPanel {
+  position: fixed;
+  top: calc(60px + 35vh + 20px);  /* Below Color By panel */
+  left: 10px;
+  width: 320px;                   /* <<< SAME WIDTH */
+  max-height: 35vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+#infoPanel.open {
+  display: block;
+}
+
+/* ===== Legend (unchanged) ===== */
+#legendToggle {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 7000;
+}
+
+#legendWrap {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: 60px;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+#legendWrap.open {
+  display: block;
+}
+/* ===========================================================
+   DESKTOP vs MOBILE PANEL LAYOUT FIX
+   Prevent Info Panel from overlapping Legend on desktop
+   =========================================================== */
+
+/* ----- Desktop Specific (min-width: 701px) ----- */
+@media (min-width: 701px) {
+
+  /* Reduce the height of panels and stack tighter */
+  .controls {
+    top: 60px;
+    max-height: 25vh;        /* smaller on desktop */
+    width: 320px;
+  }
+
+  #infoPanel {
+    top: calc(60px + 25vh + 20px);   /* reduced stack height */
+    max-height: 25vh;
+    width: 320px;
+  }
+
+  /* Legend stays bottom-left but with more spacing */
+  #legendWrap {
+    bottom: 70px;
+    max-height: 35vh;
+  }
+}
+
+/* ----- Mobile Specific (max-width: 700px) ----- */
+@media (max-width: 700px) {
+
+  /* Larger panel heights for mobile */
+  .controls {
+    top: 60px;
+    max-height: 35vh;
+    width: 320px;
+  }
+
+  #infoPanel {
+    top: calc(60px + 35vh + 20px);
+    max-height: 35vh;
+    width: 320px;
+  }
+
+  #legendWrap {
+    bottom: 60px;
+    max-height: 40vh;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -49,27 +614,30 @@
   </div>
 </div>
 
-<div id="legendWrap" style="left:10px; bottom:10px;">
-  <div id="infoPanel">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <strong id="infoTitle">Category Info — Semantic Major</strong>
-      <div>
-        <button id="toggleInfo" class="small-btn">Hide info</button>
-      </div>
-    </div>
+<button id="controlsToggle">Color By ▾</button>
+<button id="infoToggle">Info ▾</button>
+<button id="legendToggle">Legend ▾</button>
 
-    <div class="info-controls" style="margin-top:8px;">
-      <select id="infoModeSelect" class="info-mode-select" title="Select mode to edit info"></select>
-      <button id="resetInfo" class="small-btn" title="Reset placeholder text">Reset</button>
-    </div>
-
-    <div id="infoEditArea" class="info-edit" contenteditable="true" aria-label="Edit info text">
-      <!-- filled by script -->
-    </div>
-
-    <div style="margin-top:6px" class="muted">Edit the multi-line descriptions. Click <strong>Hide info</strong> to collapse.</div>
+<div id="infoPanel">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <strong id="infoTitle">Category Info — Semantic Major</strong>
   </div>
 
+  <div class="info-controls" style="margin-top:8px;">
+    <select id="infoModeSelect" class="info-mode-select" title="Select mode to edit info"></select>
+    <button id="resetInfo" class="small-btn" title="Reset placeholder text">Reset</button>
+  </div>
+
+  <div id="infoEditArea" class="info-edit" contenteditable="true" aria-label="Edit info text">
+    <!-- filled by script -->
+  </div>
+
+  <div style="margin-top:6px" class="muted">
+    Edit the multi-line descriptions. Use the Info button to show or hide this panel.
+  </div>
+</div>
+
+<div id="legendWrap">
   <div id="legend" aria-live="polite" style="margin-top:8px;">
     <!-- legend filled by script -->
   </div>
@@ -558,7 +1126,7 @@ const data = [
         "Semantic Type (Major)": "Copied",
         "Semantic Type (Specific)": "Linguistic",
         "Notes": "Homophonous with some other lexicalized fingerspellings: WHEN, DAY, and TEA",
-        "Related to a fingerspelling": "no",
+        "Related to a fingerspelling": "yes",
         "Phonological Type": "one-handed",
         "Body-Indexical": "yes",
         "Food-related": "no",
@@ -1192,7 +1760,7 @@ function parseCategories(value){
   if(raw === "?" || raw.toUpperCase() === "N/A") return ["N/A"];
 
   // Now we safely split the multi-valued types
-  return raw.split(/[,\/\+]/)
+  return raw.split(/[,\+]/)
     .map(v => v.trim())
     .filter(v => v)
     .map(v => {
@@ -1207,106 +1775,42 @@ function parseCategories(value){
     });
 }
 
-function normalizeToken(tok){
-  const v = String(tok).trim();
-  const low = v.toLowerCase();
-  if (low === "?" || low === "n/a" || low === "na") return "N/A";
-
-  // semantic / minor
-  if (low.includes("structure")) return "Structure";
-  if (low.includes("relational")) return "Relational";
-  if (low.includes("functional")) return "Functional";
-  if (low.includes("occupation")) return "Occupation/Activity";
-  if (low.includes("activity") && !low.includes("occupation")) return "Occupation/Activity";
-  if (low.includes("environment") || low.includes("enviroment")) return "Environment";
-  if (low.includes("linguistic")) return "Linguistic";
-  if (low.includes("topographic")) return "Topographic";
-  if (low.includes("locational")) return "Locational";
-  if (low.includes("notable") || low.includes("person")) return "Notable Person";
-  if (low.includes("occasion")) return "Occasion";
-  if (low.includes("incident")) return "Incident";
-  if (low.includes("copied")) return "Copied";
-  if (low.includes("descriptive")) return "Descriptive";
-  if (low.includes("associative")) return "Associative";
-  if (low.includes("eponym")) return "Eponymous";
-
-  // phonology
-  if (low.includes("one-handed") || low.includes("one handed") || low.includes("onehanded")) return "one-handed";
-  if (low.includes("symmetrical") || low.includes("symetric")) return "symmetrical";
-  if (low.includes("asymmetrical") || low.includes("asymetric")) return "asymmetrical";
-  if (low.includes("one-handed + symmetrical") || low.includes("one-handed+symmetrical") ) return "one-handed + symmetrical";
-  if (low.includes("symmetrical + asymmetrical") || low.includes("symmetrical+asymmetrical")) return "symmetrical + asymmetrical";
-
-  // body indexical
-  if (low === "yes" || low === "y") return "yes";
-  if (low === "no" || low === "n") return "no";
-
-  // Food-related
-  if (low === "yes" || low === "y" || low.includes("food") ) return "yes";
-  if (low === "no" || low === "n") return "no";
-
-  // Handshape Iconicity
-  if (low.includes("object + hands") || low.includes("object+hands") || low.includes("object and hands")) return "Object + Hands as Hands";
-  if (low.includes("hands as hands")) return "Hands as Hands";
-  if (low.includes("object")) return "Object";
-  if (low.includes("indexical")) return "Indexical";
-  if (low.includes("handling")) return "Handling";
-  if (low.includes("ambig")) return "Ambiguous";
-
-  // Movement Iconicity
-  if (low.includes("movement as shape")) return "Movement-as-Shape";
-  if (low.includes("movement as movement")) return "Movement-as-Movement";
-  if (low.includes("movement as plural")) return "Movement-as-Plural";
-  if (low.includes("ambig")) return "Ambiguous";
-  if (low.includes("none")) return "None";
-  if (low === "n/a") return "N/A";
-
-  // Plurality
-  if (low.includes("hands")) return "Hands";
-  if (low.includes("selected fingers")) return "Selected Fingers";
-  if (low.includes("movement")) return "Movement";
-  if (low.includes("none")) return "None";
-
-  // fallback: title-case
-  return v.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1));
-}
-
 /* ===========================
    Color maps
 =========================== */
 const colorMaps = {
-  semantic_major:{
-    "Descriptive":"#1f78b4","Associative":"#33a02c","Occurrent":"#6a3d9a","Copied":"#e31a1c","Eponymous":"#17a2a6","N/A":"gray"
-  },
-  semantic_minor:{
-    "Relational":"#3182bd","Structure":"#756bb1","Functional":"#31a354",
-    "Occupation/Activity":"#ff7f00","Environment":"#b15928","Linguistic":"#1f78b4",
-    "Topographic":"#6a3d9a","Locational":"#33a02c","Notable Person":"#e31a1c",
-    "Occasion":"#fdb462","N/A":"gray"
-  },
-  morphology:{
-    "simplex":"#4daf4a","compound":"#984ea3","hybrid":"#377eb8","hybrid compound":"#377eb8","N/A":"gray"
-  },
-  fingerspelling:{ "yes":"#e41a1c","no":"#377eb8","N/A":"gray" },
-  phonology:{
-    "one-handed":"#8dd3c7","symmetrical":"#ffffb3","asymmetrical":"#bebada",
-    "one-handed + symmetrical":"#fb8072","symmetrical + asymmetrical":"#80b1d3","N/A":"gray","?":"gray"
-  },
-  body_indexical:{
-    "yes":"#fdb462","no":"#b3de69","?":"#fccde5","N/A":"gray"
-  },
-  food:{
-    "yes":"#e78ac3","no":"#a6cee3","N/A":"gray"
-  },
-  handshape:{
-    "Object":"#66c2a5","Indexical":"#fc8d62","Handling":"#8da0cb","Hands as Hands":"#e5c494","Object + Hands as Hands":"#b3b3b3","Ambiguous":"#fb9a99","N/A":"gray"
-  },
-  movementIcon:{
-    "Movement-as-Shape":"#8dd3c7","Movement-as-Movement":"#ffffb3","Movement-as-Plural":"#bebada","Ambiguous":"#fb8072","None":"#ccebc5","N/A":"gray"
-  },
-  plurality:{
-    "Hands":"#1f78b4","Movement":"#33a02c","Selected Fingers":"#e31a1c","None":"#999999","N/A":"gray"
-  }
+  // semantic_major:{
+  //   "Descriptive":"#1f78b4","Associative":"#33a02c","Occurrent":"#6a3d9a","Copied":"#e31a1c","Eponymous":"#17a2a6","N/A":"gray"
+  // },
+  // semantic_minor:{
+  //   "Relational":"#3182bd","Structure":"#756bb1","Functional":"#31a354",
+  //   "Occupation/Activity":"#ff7f00","Environment":"#b15928","Linguistic":"#1f78b4",
+  //   "Topographic":"#6a3d9a","Locational":"#33a02c","Notable Person":"#e31a1c",
+  //   "Occasion":"#fdb462","N/A":"gray"
+  // },
+  // morphology:{
+  //   "simplex":"#4daf4a","compound":"#984ea3","hybrid":"#377eb8","hybrid compound":"#377eb8","N/A":"gray"
+  // },
+  // fingerspelling:{ "yes":"#e41a1c","no":"#377eb8","N/A":"gray" },
+  // phonology:{
+  //   "one-handed":"#8dd3c7","symmetrical":"#ffffb3","asymmetrical":"#bebada",
+  //   "one-handed + symmetrical":"#fb8072","symmetrical + asymmetrical":"#80b1d3","N/A":"gray","?":"gray"
+  // },
+  // body_indexical:{
+  //   "yes":"#fdb462","no":"#b3de69","?":"#fccde5","N/A":"gray"
+  // },
+  // food:{
+  //   "yes":"#e78ac3","no":"#a6cee3","N/A":"gray"
+  // },
+  // handshape:{
+  //   "Object":"#66c2a5","Indexical":"#fc8d62","Handling":"#8da0cb","Hands as Hands":"#e5c494","Object + Hands as Hands":"#b3b3b3","Ambiguous":"#fb9a99","N/A":"gray"
+  // },
+  // movementIcon:{
+  //   "Movement-as-Shape":"#8dd3c7","Movement-as-Movement":"#ffffb3","Movement-as-Plural":"#bebada","Ambiguous":"#fb8072","None":"#ccebc5","N/A":"gray"
+  // },
+  // plurality:{
+  //   "Hands":"#1f78b4","Movement":"#33a02c","Selected Fingers":"#e31a1c","None":"#999999","N/A":"gray"
+  // }
 };
 
 function ensureColorFor(mode, key){
@@ -1380,7 +1884,7 @@ function getValsForMode(rows, mode){
       const parts = parseCategories(raw);
       parts.forEach(p => all.push(p));
     } else {
-      all.push(normalizeToken(raw));
+      all.push(raw);
     }
   });
   return all.length ? all : ["N/A"];
@@ -1408,7 +1912,7 @@ function render(mode='semantic_major'){
     const lng = Number(rowWithCoords.Longitude);
     if(isNaN(lat) || isNaN(lng)) continue;
 
-    const vals = getValsForMode(rows, mode).map(v => normalizeToken(v));
+    const vals = getValsForMode(rows, mode).map(v => v);
     const unique = Array.from(new Set(vals));
 
     const colors = unique.map(k => {
@@ -1500,6 +2004,7 @@ const infoStore = {
 function buildUI(){
   radioList.innerHTML = "";
   infoModeSelect.innerHTML = "";
+  render(MODES[0].id);
   MODES.forEach((m, idx) => {
     const div = document.createElement('div');
     div.className = 'radio-item';
@@ -1509,6 +2014,7 @@ function buildUI(){
     input.id = 'r_' + m.id;
     input.value = m.id;
     input.checked = idx === 0;
+
     input.addEventListener('change', () => {
       render(m.id);
       infoTitle.textContent = `Category Info — ${m.label}`;
@@ -1576,6 +2082,52 @@ function fitMapToMarkers(){
   const group = L.featureGroup(layers);
   map.fitBounds(group.getBounds().pad(0.12));
 }
+const first = document.querySelector('input[name="colorBy"]');
+if (first) {
+  first.checked = true;
+  render(first.value);
+}
+
+</script>
+<script>
+const controlsToggleBtn = document.getElementById("controlsToggle");
+if (controlsToggleBtn) {
+  controlsToggleBtn.onclick = () => {
+    const panel = document.querySelector(".controls");
+    if (panel) panel.classList.toggle("open");
+  };
+}
+
+const legendToggleBtn = document.getElementById("legendToggle");
+if (legendToggleBtn) {
+  legendToggleBtn.onclick = () => {
+    const wrap = document.getElementById("legendWrap");
+    if (wrap) wrap.classList.toggle("open");
+  };
+}
+
+const infoToggleBtn2 = document.getElementById("infoToggle");
+if (infoToggleBtn2) {
+  infoToggleBtn2.onclick = () => {
+    const info = document.getElementById("infoPanel");
+    if (info) info.classList.toggle("open");
+  };
+}
+window.addEventListener("load", () => {
+  const isMobile = window.innerWidth <= 700;
+
+  if (!isMobile) {
+    // Desktop: open Color By and Info panels by default
+    document.querySelector(".controls")?.classList.add("open");
+    document.querySelector("#infoPanel")?.classList.add("open");
+  } else {
+    // Mobile: ensure both are closed by default
+    document.querySelector(".controls")?.classList.remove("open");
+    document.querySelector("#infoPanel")?.classList.remove("open");
+  }
+});
+
+
 </script>
 </body>
 </html>
