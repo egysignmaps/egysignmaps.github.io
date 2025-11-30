@@ -596,6 +596,83 @@
     max-height: 40vh;
   }
 }
+@media (min-width: 701px) {
+
+  /* Show panels on desktop (start "toggled on") */
+  .controls {
+    display: block !important;
+  }
+
+  #infoPanel {
+    display: block !important;
+  }
+
+  /* Hide the mobile-style toggle buttons on desktop */
+  #controlsToggle,
+  #infoToggle,
+  #legendToggle {
+    display: none !important;
+  }
+
+  /* Left-column stacked layout */
+  .controls {
+    position: fixed !important;
+    top: 70px;
+    left: 10px;
+    width: 320px;
+    max-height: 25vh;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.97);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    z-index: 3000;
+  }
+
+  #infoPanel {
+    position: fixed !important;
+    top: calc(70px + 25vh + 20px); /* below Color By panel */
+    left: 10px;
+    width: 320px;
+    max-height: 25vh;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.97);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    z-index: 3000;
+  }
+
+  /* Legend bottom-left, below everything, no overlap */
+  #legendWrap {
+    position: fixed !important;
+    left: 10px;
+    bottom: 10px;
+    width: 320px;
+    max-height: 25vh;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.98);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    z-index: 2500;
+  }
+}
+
+/* ---------- MOBILE (panels start closed, use drawers) ---------- */
+@media (max-width: 700px) {
+
+  /* On mobile, panels should NOT be forced visible */
+  .controls,
+  #infoPanel,
+  #legendWrap {
+    /* visibility controlled by .open class + existing CSS */
+  }
+
+  /* Ensure mobile toggle buttons are visible */
+  #controlsToggle,
+  #infoToggle,
+  #legendToggle {
+    display: inline-block !important;
+  }
+}
 
 </style>
 </head>
