@@ -557,7 +557,7 @@
 
   /* Reduce the height of panels and stack tighter */
   .controls {
-    top: 20px;
+    top: 40px;
     max-height: 25vh;        /* smaller on desktop */
     width: 320px;
   }
@@ -619,6 +619,20 @@
     opacity: 1 !important;
   }
 }
+@media (min-width: 701px) {
+  #legendWrap {
+    position: fixed !important;
+    left: 350px !important;  /* moved to the right of the stacked panels */
+    bottom: 10px !important;
+    width: 260px !important; /* safe width */
+    max-height: 35vh !important;
+  }
+}
+@media (min-width: 701px) {
+  #legendToggle {
+    display: none !important;
+  }
+}
 
 </style>
 </head>
@@ -633,7 +647,6 @@
   </div>
   <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
     <button id="fitBtn" class="small-btn">Fit to markers</button>
-    <span class="muted">Markers & legend update instantly</span>
   </div>
 </div>
 
@@ -648,7 +661,6 @@
 
   <div class="info-controls" style="margin-top:8px;">
     <select id="infoModeSelect" class="info-mode-select" title="Select mode to edit info"></select>
-    <button id="resetInfo" class="small-btn" title="Reset placeholder text">Reset</button>
   </div>
 
   <div id="infoEditArea" class="info-edit" contenteditable="true" aria-label="Edit info text">
@@ -656,7 +668,6 @@
   </div>
 
   <div style="margin-top:6px" class="muted">
-    Edit the multi-line descriptions. Use the Info button to show or hide this panel.
   </div>
 </div>
 
