@@ -1,0 +1,2254 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="utf-8" />
+<title>EgySL Toponym Map — Final with Multi-line Info</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+
+  #map {
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Desktop: static Color By controls panel */
+  .controls {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    width: 300px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .controls h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+  }
+
+  .radio-list {
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 6px;
+    margin-top: 6px;
+  }
+
+  .radio-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 8px;
+  }
+
+  .radio-item input {
+    transform: scale(1.05);
+  }
+
+  #legendWrap {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    width: 340px;
+    z-index: 1000;
+  }
+
+  #infoPanel,
+  #legend {
+    background: rgba(255,255,255,0.98);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    font-size: 13px;
+  }
+
+  #legend {
+    max-height: 280px;
+    overflow-y: auto;
+    margin-top: 8px;
+  }
+
+  .legend-entry {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .legend-entry span {
+    width: 16px !important;
+    height: 16px !important;
+    border-radius: 50% !important;
+    display: inline-block !important;
+    margin-right: 8px;
+    border: 1px solid #333 !important;
+  }
+
+  .popup-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  .sign-entry {
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
+    margin-bottom: 10px;
+  }
+
+  iframe {
+    width: 100%;
+    height: 220px;
+    border-radius: 6px;
+  }
+
+  .small-btn {
+    background: #eee;
+    border: none;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .info-mode-select {
+    margin-bottom: 8px;
+    width: 100%;
+  }
+
+  .info-edit {
+    min-height: 72px;
+    max-height: 240px;
+    padding: 8px;
+    border-radius: 6px;
+    background: #fafafa;
+    border: 1px dashed #ddd;
+    outline: none;
+    overflow: auto;
+    white-space: pre-wrap;
+  }
+
+  .info-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+
+  .muted {
+    color: #666;
+    font-size: 12px;
+  }
+
+  /* Toggle buttons: hidden by default, enabled on mobile */
+  #controlsToggle,
+  #legendToggle,
+  #infoToggle {
+    display: none;
+  }
+
+  /* Info panel floating behavior (desktop default) */
+  #infoPanel {
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    width: 340px;
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: 1200;
+    display: none;
+  }
+
+  #infoPanel.open {
+    display: block;
+  }
+
+  #infoToggle {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 1300;
+    background: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    border: none;
+  }
+  #map {
+  pointer-events: auto !important;
+}
+
+/* Fix for mobile Safari clipping SVG inside divIcons */
+.leaflet-marker-icon {
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Ensure SVG inside marker is visible */
+.leaflet-marker-icon svg {
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+/* Prevent fixed UI panels from blocking marker painting */
+#controlsToggle,
+#infoToggle,
+#legendToggle,
+.controls,
+#infoPanel,
+#legendWrap {
+  pointer-events: auto !important;  /* They can be clicked */
+  z-index: 5000 !important;          /* Above map but non-obstructive */
+}
+
+/* These panes must NOT intercept map rendering */
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-pane,
+.leaflet-control,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane {
+  pointer-events: auto !important;
+}
+
+/* Marker internals should not steal touches on Safari */
+.leaflet-marker-icon *,
+.pie-marker *,
+.pie-marker svg *,
+.pie-slice {
+  pointer-events: none !important;
+}
+
+/* Guarantee divIcons never collapse */
+.pie-marker {
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+/* Mobile-only tweaks for layout safety */
+
+
+  /* ============================================================
+     =================== MOBILE OPTIMIZATIONS ====================
+     ============================================================ */
+
+@media (max-width: 700px) {
+  /* Ensure map is never behind any invisible overlay */
+  #map {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Panels remain interactive but don't block marker drawing */
+  .controls,
+  #infoPanel,
+  #legendWrap {
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(4px);
+    pointer-events: auto !important;
+    z-index: 6000 !important;
+  }
+
+  #controlsToggle,
+  #infoToggle,
+  #legendToggle {
+    z-index: 7000 !important;
+  }
+}
+
+    /* Floating toggle buttons */
+    #controlsToggle,
+    #legendToggle,
+    #infoToggle {
+      display: inline-block;
+    }
+
+    #controlsToggle {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 5000;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      border: none;
+    }
+
+    /* Info stacked under Color By (your option C) */
+    #infoToggle {
+      position: fixed;
+      top: 56px;
+      left: 12px;
+      right: auto;
+      z-index: 5000;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      border: none;
+    }
+
+    #legendToggle {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      z-index: 5000;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      border: none;
+    }
+
+    /* Color By panel as drawer */
+    .controls {
+      position: fixed;
+      top: 100px;
+      left: 10px;
+      right: 10px;
+      max-height: 60vh;
+      overflow-y: auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      display: none;
+      z-index: 4000;
+    }
+
+    .controls.open {
+      display: block;
+    }
+
+    /* Legend as bottom drawer */
+    #legendWrap {
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: 60px;
+      max-height: 50vh;
+      overflow-y: auto;
+      background: rgba(255,255,255,0.98);
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      display: none;
+      z-index: 4000;
+    }
+
+    #legendWrap.open {
+      display: block;
+    }
+
+    /* Info panel as drawer under toggles */
+    #infoPanel {
+      position: fixed;
+      top: 100px;
+      left: 10px;
+      right: 10px;
+      width: auto;
+      max-height: 60vh;
+      z-index: 4000;
+    }
+  }
+
+  /* Extremely small devices */
+  @media (max-width: 400px) {
+    iframe {
+      height: 150px;
+    }
+    .controls,
+    #legendWrap,
+    #infoPanel {
+      max-height: 40vh;
+    }
+  }
+  /* ================================================================
+   OPTION B — STACKED PANELS (Color By above, Info panel below)
+   Prevents overlap on all screen sizes
+   ================================================================ */
+
+/* Toggles remain left side */
+#controlsToggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 7000;
+}
+
+#infoToggle {
+  position: fixed;
+  top: 12px;
+  left: 140px;                  /* offset so it doesn't cover Color By */
+  z-index: 7000;
+}
+
+/* COLOR BY PANEL — anchored under its toggle */
+.controls {
+  position: fixed;
+  top: 60px;                    /* below Color By toggle */
+  left: 10px;
+  right: 10px;
+  max-height: 35vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+.controls.open {
+  display: block;
+}
+
+/* INFO PANEL — anchored BELOW the Color By panel */
+#infoPanel {
+  position: fixed;
+  top: calc(60px + 35vh + 20px);  /* placed below Color By panel */
+  left: 10px;
+  right: 10px;
+  max-height: 35vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+#infoPanel.open {
+  display: block;
+}
+
+/* LEGEND stays bottom-left */
+#legendToggle {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 7000;
+}
+
+#legendWrap {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: 60px;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+#legendWrap.open {
+  display: block;
+}
+/* ================================================================
+   OPTION A — LEFT-ALIGNED MATCHING WIDTH PANELS (STACKED)
+   ================================================================ */
+
+/* TWEAK: Put "Info" toggle immediately to the right of Color By toggle */
+#controlsToggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 7000;
+}
+
+#infoToggle {
+  position: fixed;
+  top: 12px;
+  left: 140px;                /* Moves info toggle out of the way */
+  z-index: 7000;
+}
+
+/* ===== Color By Panel ===== */
+.controls {
+  position: fixed;
+  top: 60px;                  /* Below Color By toggle */
+  left: 10px;
+  width: 320px;               /* <<< PANEL WIDTH HERE */
+  max-height: 35vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+.controls.open {
+  display: block;
+}
+
+/* ===== Info Panel (STACKED BELOW COLOR BY) ===== */
+#infoPanel {
+  position: fixed;
+  top: calc(60px + 35vh + 20px);  /* Below Color By panel */
+  left: 10px;
+  width: 320px;                   /* <<< SAME WIDTH */
+  max-height: 35vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+#infoPanel.open {
+  display: block;
+}
+
+/* ===== Legend (unchanged) ===== */
+#legendToggle {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 7000;
+}
+
+#legendWrap {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: 60px;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: rgba(255,255,255,0.97);
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: none;
+  z-index: 6000;
+}
+
+#legendWrap.open {
+  display: block;
+}
+/* ===========================================================
+   DESKTOP vs MOBILE PANEL LAYOUT FIX
+   Prevent Info Panel from overlapping Legend on desktop
+   =========================================================== */
+
+/* ----- Desktop Specific (min-width: 701px) ----- */
+@media (min-width: 701px) {
+
+  /* Reduce the height of panels and stack tighter */
+  .controls {
+    top: 20px;
+    max-height: 25vh;        /* smaller on desktop */
+    width: 320px;
+  }
+
+  #infoPanel {
+    top: calc(60px + 25vh + 20px);   /* reduced stack height */
+    max-height: 25vh;
+    width: 320px;
+  }
+
+  /* Legend stays bottom-left but with more spacing */
+  #legendWrap {
+    bottom: 70px;
+    max-height: 35vh;
+  }
+}
+
+/* ----- Mobile Specific (max-width: 700px) ----- */
+@media (max-width: 700px) {
+
+  /* Larger panel heights for mobile */
+  .controls {
+    top: 60px;
+    max-height: 35vh;
+    width: 320px;
+  }
+
+  #infoPanel {
+    top: calc(60px + 35vh + 20px);
+    max-height: 35vh;
+    width: 320px;
+  }
+
+  #legendWrap {
+    bottom: 60px;
+    max-height: 40vh;
+  }
+}
+@media (min-width: 701px) {
+  #legendWrap {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+@media (min-width: 701px) {
+  #legendWrap {
+    position: fixed !important;
+    left: 350px !important;  /* moved to the right of the stacked panels */
+    bottom: 10px !important;
+    width: 260px !important; /* safe width */
+    max-height: 35vh !important;
+  }
+}
+/* ===========================================================
+   FINAL UNIFIED LAYOUT — OPTION A (Stacked Left Panels)
+   Legend stays bottom-left
+   -----------------------------------------------------------
+   - Desktop:
+       • Color By and Info panels open by default
+       • Stacked vertically on the left
+       • Legend bottom-left, never overlapping
+   - Mobile:
+       • All panels closed by default (use toggles)
+       • Mobile drawers remain working
+   =========================================================== */
+
+/* -------- DESKTOP (min-width: 701px) -------- */
+@media (min-width: 701px) {
+
+  /* Hide mobile toggles on desktop */
+  #controlsToggle,
+  #infoToggle,
+  #legendToggle {
+    display: none !important;
+  }
+
+  /* OPEN BY DEFAULT on desktop */
+  .controls,
+  #infoPanel,
+  #legendWrap {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* COLOR BY PANEL (top-left, fixed width) */
+  .controls {
+    position: fixed !important;
+    top: 30px;
+    left: 10px;
+    width: 320px;
+    max-height: 28vh;        /* desktop height */
+    overflow-y: auto;
+    background: rgba(255,255,255,0.98);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 3000 !important;
+  }
+
+  /* INFO PANEL (stacked beneath Color By) */
+  #infoPanel {
+    position: fixed !important;
+    top: calc(90px + 28vh + 50px);  /* below Color By panel */
+    left: 10px;
+    width: 320px;
+    max-height: 28vh;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.98);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 3000 !important;
+  }
+
+  /* LEGEND PANEL (bottom-left) */
+  #legendWrap {
+    position: fixed !important;
+    left: 10px;
+    bottom: 10px;
+    width: 320px;
+    max-height: 28vh;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.98);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 2500 !important;
+  }
+}
+
+/* -------- MOBILE (max-width: 700px) -------- */
+@media (max-width: 700px) {
+
+  /* Show toggle buttons */
+  #controlsToggle,
+  #infoToggle,
+  #legendToggle {
+    display: inline-block !important;
+  }
+
+  /* Panels start CLOSED on mobile */
+  .controls,
+  #infoPanel,
+  #legendWrap {
+    display: none; /* opened only by JS toggles */
+  }
+
+  /* (Your existing mobile drawer styles still apply) */
+}
+
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="controls" aria-label="Color by controls">
+  <h4>Color by</h4>
+  <div class="radio-list" id="radioList" role="radiogroup" aria-label="Color by options">
+    <!-- radio buttons will be inserted here -->
+  </div>
+  <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+    <button id="fitBtn" class="small-btn">Fit to markers</button>
+    <span class="muted">Markers & legend update instantly</span>
+  </div>
+</div>
+
+<button id="controlsToggle">Color By ▾</button>
+<button id="infoToggle">Info ▾</button>
+<button id="legendToggle">Legend ▾</button>
+
+<div id="infoPanel">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <strong id="infoTitle">Category Info — Semantic Major</strong>
+  </div>
+
+  <div class="info-controls" style="margin-top:8px;">
+    <select id="infoModeSelect" class="info-mode-select" title="Select mode to edit info"></select>
+    <button id="resetInfo" class="small-btn" title="Reset placeholder text">Reset</button>
+  </div>
+
+  <div id="infoEditArea" class="info-edit" contenteditable="true" aria-label="Edit info text">
+    <!-- filled by script -->
+  </div>
+
+  <div style="margin-top:6px" class="muted">
+    Edit the multi-line descriptions. Use the Info button to show or hide this panel.
+  </div>
+</div>
+
+<div id="legendWrap">
+  <div id="legend" aria-live="polite" style="margin-top:8px;">
+    <!-- legend filled by script -->
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ===========================
+   PASTE YOUR JSON DATA (Option 1: flat array)
+   Example: array of variant objects with keys (case/spacing-sensitive):
+     انجليزي, Latittude, Longitude, Link, حاشية, الأصل حسب الشعب,
+     نوع مورفولوجي, النوع الدلالي (كبرى), النوع الدلالي (صغرى),
+     متعلق بالحروف, نوع فونولوجي, يشير إلى الجسم,
+     متعلق بالأكل, أيقونية شكل اليد, أيقونية الحركة, الجمع, زوائد
+=========================== */
+const data = [
+  {
+    "Link": "https://www.youtube.com/watch?v=Kp15tpyP21s",
+    "انجليزي": "Cairo",
+    "عربية": "القاهرة",
+    "Latittude": "30.0444",
+    "Longitude": "31.2357",
+    "حاشية": "مصر",
+    "الأصل حسب الشعب": "أهرامات جيزة",
+    "نوع مورفولوجي": "بسيظ",
+    "النوع الدلالي (كبرى)": "وصفي, ترابطي",
+    "النوع الدلالي (صغرى)": "علاقاتي, بنية",
+    "زوائد": "تُستخدم عمومًا للإشارة إلى مصر كلها، لكنها قد تشير إلى العاصمة عند التواجد خارج القاهرة",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كشكل",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=Cp2NSp01EF4",
+    "انجليزي": "Cairo",
+    "عربية": "القاهرة",
+    "Latittude": "30.0444",
+    "Longitude": "31.2357",
+    "حاشية": "مصر + عاصمة",
+    "الأصل حسب الشعب": "أهرامات الجيزة + القاهرة هي العاصمة",
+    "نوع مورفولوجي": "مركب",
+    "النوع الدلالي (كبرى)": "وصفي, ترابطي",
+    "النوع الدلالي (صغرى)": "وظيفي, بنية",
+    "زوائد": "الجزء الثاني من هذا التركيب قد يعني «عاصمة» لكنه قد يعني أيضًا «مدينة» أو بشكل أعم «مكان»",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل + غير متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كشكل + لا يوجد",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=ZsVVTFTsMGE",
+    "انجليزي": "Cairo",
+    "عربية": "القاهرة",
+    "Latittude": "30.0444",
+    "Longitude": "31.2357",
+    "حاشية": "تاج فرعوني",
+    "الأصل حسب الشعب": "جزء من تاج الفرعون",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "تُعتبر إشارة قديمة وقد تعني أيضًا «مصر»",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=SeyU0xxVh8c",
+    "انجليزي": "Cairo",
+    "عربية": "القاهرة",
+    "Latittude": "30.0444",
+    "Longitude": "31.2357",
+    "حاشية": "الحسين",
+    "الأصل حسب الشعب": "غير واضح",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بنية",
+    "زوائد": "وهي أيضًا إشارة اسم مسجد الحسين والمنطقة المحيطة به",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "؟",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=I-gosqC8yPs",
+    "انجليزي": "Cairo",
+    "عربية": "القاهرة",
+    "Latittude": "30.0444",
+    "Longitude": "31.2357",
+    "حاشية": "قبة",
+    "الأصل حسب الشعب": "عمارة جامعة القاهرة ذات القباب، أو بسبب كثرة المساجد والكنائس ذات القباب",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بنية",
+    "زوائد": "عمومًا الإشارة الأكثر استخدامًا للقاهرة كمدينة ومحافظة دون معنى مصر ككل. تشمل المتغيرات الفونولوجية استخدام يد قاعدة مسطحة موجهة للأعلى أو حذف اليد غير المسيطرة",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "غير متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "إشاري",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=GJf9Dp63Z68",
+    "انجليزي": "Cairo",
+    "عربية": "القاهرة",
+    "Latittude": "30.0444",
+    "Longitude": "31.2357",
+    "حاشية": "ما شاء الله؟",
+    "الأصل حسب الشعب": "غير واضح",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "؟",
+    "النوع الدلالي (صغرى)": "؟",
+    "زوائد": "تُعتبر إشارة قديمة وأصلها غير واضح: ربما تكون مرتبطة بإشارة «ما شاء الله» أو بعمارة الأزهر",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "؟"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=OBlDuMSG7IA",
+    "انجليزي": "Alexandria",
+    "عربية": "الاسكنرية",
+    "Latittude": "31.2001",
+    "Longitude": "29.9187",
+    "حاشية": "طعم مالح",
+    "الأصل حسب الشعب": "من طعم الملح في الهواء",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بيئة",
+    "زوائد": "الإشارة الأكثر شيوعًا بين السكندريين",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "إشاري",
+    "أيقونية الحركة": "؟",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=bHPtmy-pcos",
+    "انجليزي": "Alexandria",
+    "عربية": "الاسكنرية",
+    "Latittude": "31.2001",
+    "Longitude": "29.9187",
+    "حاشية": "بحر",
+    "الأصل حسب الشعب": "تشتهر الإسكندرية بوقوعها على البحر وهي وجهة مصيف شائعة، خصوصًا صيفًا لسكان القاهرة وغيرها",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بيئة",
+    "زوائد": "تُستخدم غالبًا فقط من قبل غير السكندريين",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "ملتبس (الحركة كشكل و/أو كحركة)",
+    "الجمع": "حركة"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=AJxiv82x87I",
+    "انجليزي": "Giza",
+    "عربية": "الجيزة",
+    "Latittude": "29.9773",
+    "Longitude": "31.1325",
+    "حاشية": "أبو الهول",
+    "الأصل حسب الشعب": "أنف أبو الهول المفقود",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بنية",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كشكل",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=LhKzqVqx0ws",
+    "انجليزي": "Daqhalia (Mansoura)",
+    "عربية": "دقهلية (منصورة)",
+    "Latittude": "31.0379",
+    "Longitude": "31.3807",
+    "حاشية": "منجل",
+    "الأصل حسب الشعب": "منطقة ريفية معروفة بالزراعة باستخدام المنجل",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "قد تشير إلى المحافظة كلها أو فقط إلى مدينة المنصورة العاصمة",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "لا يوجد",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=-QjhhdU2vhE",
+    "انجليزي": "Beheira (Damanhour)",
+    "عربية": "بحيرة (دمنهور)",
+    "Latittude": "31.0341",
+    "Longitude": "30.4682",
+    "حاشية": "دمنهور",
+    "الأصل حسب الشعب": "غير واضح, ربما مرتبط بالري",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "؟",
+    "النوع الدلالي (صغرى)": "؟",
+    "زوائد": "قد تشير إلى المحافظة كلها أو فقط إلى مدينة دمنهور العاصمة",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "؟"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=bH2gnGVKTuM",
+    "انجليزي": "Al-Sharqia (Zaqaziq)",
+    "عربية": "الشرقية (زقازيق)",
+    "Latittude": "30.5877",
+    "Longitude": "31.502",
+    "حاشية": "الشرقية",
+    "الأصل حسب الشعب": "مرتبط بكثرة المواشي: مصنف جمع للحيوانات",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "قد تشير إلى المحافظة كلها أو فقط إلى مدينة الزقازيق العاصمة",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "أصابع مختارة + اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=I6aVUsawr4o",
+    "انجليزي": "Qalyubia (Banha)",
+    "عربية": "قليوبية (بنها)",
+    "Latittude": "30.4598",
+    "Longitude": "31.1844",
+    "حاشية": "بنها",
+    "الأصل حسب الشعب": "اختزال للتهجئة الإصبعية الكاملة لبنها (باء، ألف، نون، هاء)",
+    "نوع مورفولوجي": "هجين",
+    "النوع الدلالي (كبرى)": "منقول",
+    "النوع الدلالي (صغرى)": "لغوي",
+    "زوائد": "تُعتبر إشارة قديمة، لذا لم تعد الحروف المختزلة قابلة للتمييز",
+    "متعلق بالحروف": "نعم",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "غير منطبق",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "غير منطبق"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=LAaj781jaFk",
+    "انجليزي": "Qalyubia (Banha)",
+    "عربية": "قليوبية (بنها)",
+    "Latittude": "30.4598",
+    "Longitude": "31.1844",
+    "حاشية": "BANHA (fs: B H A N)",
+    "الأصل حسب الشعب": "اختصار لحروف الكلمة",
+    "نوع مورفولوجي": "مركب هجين",
+    "النوع الدلالي (كبرى)": "منقول",
+    "النوع الدلالي (صغرى)": "لغوي",
+    "زوائد": "واحدة من عدة متغيرات تستخدم الأبجدية اليدوية القديمة",
+    "متعلق بالحروف": "نعم",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "غير منطبق",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "غير منطبق"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=fivJoT3M1t0",
+    "انجليزي": "Qalyubia (Banha)",
+    "عربية": "قليوبية (بنها)",
+    "Latittude": "30.4598",
+    "Longitude": "31.1844",
+    "حاشية": "BANHA (fs: B/H N)",
+    "الأصل حسب الشعب": "اختصار لحروف الكلمة",
+    "نوع مورفولوجي": "مركب هجين",
+    "النوع الدلالي (كبرى)": "منقول",
+    "النوع الدلالي (صغرى)": "لغوي",
+    "زوائد": "واحدة من عدة متغيرات تستخدم الأبجدية اليدوية القديمة",
+    "متعلق بالحروف": "نعم",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "غير منطبق",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "غير منطبق"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=47kYXiVZTr8",
+    "انجليزي": "Qalyubia (Banha)",
+    "عربية": "قليوبية (بنها)",
+    "Latittude": "30.4598",
+    "Longitude": "31.1844",
+    "حاشية": "BANHA (fs: H A N)",
+    "الأصل حسب الشعب": "اختصار لحروف الكلمة",
+    "نوع مورفولوجي": "مركب هجين",
+    "النوع الدلالي (كبرى)": "منقول",
+    "النوع الدلالي (صغرى)": "لغوي",
+    "زوائد": "واحدة من عدة متغيرات تستخدم الأبجدية اليدوية القديمة",
+    "متعلق بالحروف": "نعم",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "غير منطبق",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "غير منطبق"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=5ic85VYnqPg",
+    "انجليزي": "Manoufia (Shabin El-Kom)",
+    "عربية": "المنوفية",
+    "Latittude": "30.5972",
+    "Longitude": "30.9876",
+    "حاشية": "أنور السادات",
+    "الأصل حسب الشعب": "وهي أيضًا إشارة اسم الرئيس السابق أنور السادات الذي كان لديه أثر صلاة على جبهته",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "اشتقاقي",
+    "النوع الدلالي (صغرى)": "شخصية بارزة",
+    "زوائد": "الإشارة الأكثر شيوعًا، على الأقل خارج المنوفية",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "إشاري",
+    "أيقونية الحركة": "الحركة كشكل",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=fWHSejGosxg",
+    "انجليزي": "Manoufia (Shabin El-Kom)",
+    "عربية": "المنوفية",
+    "Latittude": "30.5972",
+    "Longitude": "30.9876",
+    "حاشية": "شبين الكوم",
+    "الأصل حسب الشعب": "غير واضح",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "؟",
+    "النوع الدلالي (صغرى)": "؟",
+    "زوائد": "إشارة قديمة قد لا تزال مستخدمة بين مجتمع شبين الكوم عاصمة المحافظة",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "؟",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "؟"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=LnHNUA3hFP4",
+    "انجليزي": "Gharbia (Tanta)",
+    "عربية": "الغربية (طنطا)",
+    "Latittude": "30.7865",
+    "Longitude": "31.0004",
+    "حاشية": "طنطا",
+    "الأصل حسب الشعب": "طريقة تصفيق الناس أثناء الطقوس المقامة في المولد المحلي",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "حدثي",
+    "النوع الدلالي (صغرى)": "مناسبة",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "الأيدي كأيدٍ",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=4CFh-T2VGQo",
+    "انجليزي": "Marsa Matrouh",
+    "عربية": "مرسى مطروح",
+    "Latittude": "31.3543",
+    "Longitude": "27.2373",
+    "حاشية": "حلقة أنف ^ تصفيق",
+    "الأصل حسب الشعب": "ترتدي النساء تقليديًا حلقات أنف ذهبية، كما تصفق المجموعات البدوية المحلية بهذه الطريقة في تقاليدها الموسيقية",
+    "نوع مورفولوجي": "مركب",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة + متماثل",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم + الأيدي كأيدٍ",
+    "أيقونية الحركة": "غير منطبق + الحركة كحركة",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=MNT60zmPWLM",
+    "انجليزي": "Kafr El-Sheikh",
+    "عربية": "كفر الشيخ",
+    "Latittude": "31.1117",
+    "Longitude": "30.9394",
+    "حاشية": "كوفية",
+    "الأصل حسب الشعب": "لف الكوفية التقليدي",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي, منقول",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط, لغوي",
+    "زوائد": "لها متغير فونولوجي يستخدم السبابة فقط أيضًا. بعض المتغيرات تدور بالكامل حول الرأس. وقد تُعتبر أيضًا ترجمة حرفية لأن بعض الموقّعين يستخدمون هذه الإشارة بمعنى «شيخ»",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "مناولة",
+    "أيقونية الحركة": "ملتبس (الحركة كشكل و/أو كحركة)",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=Rm3_kVijYbI",
+    "انجليزي": "Damietta",
+    "عربية": "دمياط",
+    "Latittude": "31.4165",
+    "Longitude": "31.8133",
+    "حاشية": "مشبك",
+    "الأصل حسب الشعب": "تشتهر دمياط بالحلوى اللزجة جدًا المعروفة بالمشبك والتي تلتصق بالأسنان",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "نعم",
+    "أيقونية شكل اليد": "مناولة",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=TlUIq2MN_hs",
+    "انجليزي": "Damietta",
+    "عربية": "دمياط",
+    "Latittude": "31.4165",
+    "Longitude": "31.8133",
+    "حاشية": "النجارة",
+    "الأصل حسب الشعب": "تشتهر دمياط بصناعة الأثاث",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "غير متماثل",
+    "يشير إلى الجسم": "؟",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=IPeUJJ0tCZs",
+    "انجليزي": "Damietta",
+    "عربية": "دمياط",
+    "Latittude": "31.4165",
+    "Longitude": "31.8133",
+    "حاشية": "FS: M Y",
+    "الأصل حسب الشعب": "اختزال للتهجئة الإصبعية الكاملة إلى حرفين وسطيين فقط: ميم وياء",
+    "نوع مورفولوجي": "مركب هجين",
+    "النوع الدلالي (كبرى)": "منقول",
+    "النوع الدلالي (صغرى)": "لغوي",
+    "زوائد": "متجانسة شكليًا مع بعض التهجئات الإصبعية المعجمية الأخرى مثل «متى» و«يوم» و«شاي»",
+    "متعلق بالحروف": "نعم",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "غير منطبق",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "غير منطبق"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=e5-WrDO0ri8",
+    "انجليزي": "Fayyoum",
+    "عربية": "الفيوم",
+    "Latittude": "29.3084",
+    "Longitude": "30.8428",
+    "حاشية": "شلالات",
+    "الأصل حسب الشعب": "شلالات الفيوم الصناعية معلم سياحي مشهور",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بنية, مهنة/نشاط, بيئة",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "ملتبس (الحركة كشكل و/أو كحركة)",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=AELm2RTeZVU",
+    "انجليزي": "Al-Menya",
+    "عربية": "المنيا",
+    "Latittude": "28.0871",
+    "Longitude": "30.7618",
+    "حاشية": "قصب السكر",
+    "الأصل حسب الشعب": "قصب السكر محصول زراعي شائع هنا",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط, بيئة",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "نعم",
+    "أيقونية شكل اليد": "مناولة",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=EGMSNwqkjIs",
+    "انجليزي": "Qena",
+    "عربية": "قنا",
+    "Latittude": "26.1551",
+    "Longitude": "32.716",
+    "حاشية": "QENA (fs:  Q N A)",
+    "الأصل حسب الشعب": "مكتوبة بالكامل باستخدام الأبجدية اليدوية القديمة",
+    "نوع مورفولوجي": "مركب هجين",
+    "النوع الدلالي (كبرى)": "منقول",
+    "النوع الدلالي (صغرى)": "لغوي",
+    "زوائد": "",
+    "متعلق بالحروف": "نعم",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "غير منطبق",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "غير منطبق"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=0HftTPuWhQA",
+    "انجليزي": "Qena",
+    "عربية": "قنا",
+    "Latittude": "26.1551",
+    "Longitude": "32.716",
+    "حاشية": "QENA (fs: Q N)",
+    "الأصل حسب الشعب": "اختزال للتهجئة الإصبعية الكاملة عبر حذف الألف الأخيرة وتقليل عدد الأصابع المختارة في التشكيل الأول",
+    "نوع مورفولوجي": "مركب هجين",
+    "النوع الدلالي (كبرى)": "منقول",
+    "النوع الدلالي (صغرى)": "لغوي",
+    "زوائد": "",
+    "متعلق بالحروف": "نعم",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "غير منطبق",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "غير منطبق"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=XTrNyGl8KnA",
+    "انجليزي": "Souhag",
+    "عربية": "سوهاج",
+    "Latittude": "26.5569",
+    "Longitude": "31.6948",
+    "حاشية": "أبيض ^ سوهاج",
+    "الأصل حسب الشعب": "يرتدي الناس في سوهاج وفي مناطق أخرى من صعيد مصر جلابيب بيضاء",
+    "نوع مورفولوجي": "مركب",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "الحركة كشكل",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=XTrNyGl8KnA",
+    "انجليزي": "Souhag",
+    "عربية": "سوهاج",
+    "Latittude": "26.5569",
+    "Longitude": "31.6948",
+    "حاشية": "سوهاج",
+    "الأصل حسب الشعب": "يرتدي الناس في سوهاج وفي مناطق أخرى من صعيد مصر جلابيب بيضاء",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "يبدو أن العنصر الأول من التركيب قد حُذف في هذا المتغير",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "الحركة كشكل",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=VLdnnhir2es",
+    "انجليزي": "Assiut",
+    "عربية": "أسيوط",
+    "Latittude": "27.1801",
+    "Longitude": "31.1837",
+    "حاشية": "ختم الرقبة",
+    "الأصل حسب الشعب": "مرتبط بتقليد ختم أسماء العائلات على الرقاب",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "مناولة",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=koz_aHiz3fg",
+    "انجليزي": "Assiut",
+    "عربية": "أسيوط",
+    "Latittude": "27.1801",
+    "Longitude": "31.1837",
+    "حاشية": "إطلاق نار + ختم الرقبة",
+    "الأصل حسب الشعب": "مرتبط بتقليد صعيدي يتمثل في إطلاق البنادق في الهواء أثناء الأعراس، ومرتبط أيضًا بتقليد ختم أسماء العائلات على الرقاب",
+    "نوع مورفولوجي": "مركب",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل + بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "ملتبس + مناولة",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=7XYy5p6hHK0",
+    "انجليزي": "Beni Suef",
+    "عربية": "بني سويف",
+    "Latittude": "29.0661",
+    "Longitude": "31.0994",
+    "حاشية": "بني سويف",
+    "الأصل حسب الشعب": "غير معروف",
+    "نوع مورفولوجي": "؟",
+    "النوع الدلالي (كبرى)": "؟",
+    "النوع الدلالي (صغرى)": "؟",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "؟",
+    "متعلق بالأكل": "؟",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "؟"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=rNOJ4My7C88",
+    "انجليزي": "Luxor",
+    "عربية": "الأقصر",
+    "Latittude": "25.6872",
+    "Longitude": "32.6396",
+    "حاشية": "تمثال فرعوني",
+    "الأصل حسب الشعب": "بسبب كثرة الآثار والمتاحف القديمة، وتشير أيقونيًا إلى طريقة تصوير التماثيل القديمة للأشخاص بأذرع متقاطعة على الصدر",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بنية",
+    "زوائد": "also the sign in Alexandria for MUSEUM",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "الأيدي كأيدٍ",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=Np07JvmzNPQ",
+    "انجليزي": "Aswan",
+    "عربية": "أسوان",
+    "Latittude": "24.0889",
+    "Longitude": "32.8998",
+    "حاشية": "السد العالي",
+    "الأصل حسب الشعب": "بسبب السد العالي في أسوان وطريقة تدفق المياه عبره",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بنية",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "أصابع مختارة + اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=91sRViDf0TI",
+    "انجليزي": "Suez",
+    "عربية": "السويس",
+    "Latittude": "29.9668",
+    "Longitude": "32.5498",
+    "حاشية": "قارب",
+    "الأصل حسب الشعب": "بسبب كثرة القوارب في قناة السويس",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بنية",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=ohGhctMMaZw",
+    "انجليزي": "Suez",
+    "عربية": "السويس",
+    "Latittude": "29.9668",
+    "Longitude": "32.5498",
+    "حاشية": "مصنف قوارب جمع",
+    "الأصل حسب الشعب": "بسبب كثرة القوارب في قناة السويس",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "بنية",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كتعدد",
+    "الجمع": "حركة"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=wQy6jrpBxQM",
+    "انجليزي": "Port Said",
+    "عربية": "بورسعيد",
+    "Latittude": "31.2653",
+    "Longitude": "32.3019",
+    "حاشية": "بورسعيد",
+    "الأصل حسب الشعب": "غير معروف",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "؟",
+    "النوع الدلالي (صغرى)": "؟",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "؟",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "؟"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=j6K7TjTX7nU",
+    "انجليزي": "Port Said",
+    "عربية": "بورسعيد",
+    "Latittude": "31.2653",
+    "Longitude": "32.3019",
+    "حاشية": "بورسعيد",
+    "الأصل حسب الشعب": "غير معروف",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "؟",
+    "النوع الدلالي (صغرى)": "؟",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "؟",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "؟"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=jb-pq4ibb74",
+    "انجليزي": "Ismailia",
+    "عربية": "الاسماعيلية",
+    "Latittude": "30.6043",
+    "Longitude": "32.2723",
+    "حاشية": "الإسماعيلية",
+    "الأصل حسب الشعب": "قد يكون مرتبطًا بالتاريخ العسكري",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "حدثي",
+    "النوع الدلالي (صغرى)": "حادثة",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "الحركة كشكل",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=xJrGWlUkpxI",
+    "انجليزي": "Ismailia",
+    "عربية": "الاسماعيلية",
+    "Latittude": "30.6043",
+    "Longitude": "32.2723",
+    "حاشية": "سمك",
+    "الأصل حسب الشعب": "تُصدَّر أنواع معينة من السمك من الإسماعيلية إلى أماكن أخرى",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط, بيئة",
+    "زوائد": "تُعتبر إشارة قديمة في الإسكندرية",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "نعم",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=pElng561zSk",
+    "انجليزي": "Desouk",
+    "عربية": "دسوق",
+    "Latittude": "31.1341",
+    "Longitude": "30.646",
+    "حاشية": "ضرب العصي",
+    "الأصل حسب الشعب": "ممارسة ضرب العصي معًا أثناء المولد المحلي",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "حدثي",
+    "النوع الدلالي (صغرى)": "حادثة",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=mwLiF_6YTHg",
+    "انجليزي": "The Red Sea",
+    "عربية": "البحر الأحمر",
+    "Latittude": "25",
+    "Longitude": "34",
+    "حاشية": "بحر + أحمر",
+    "الأصل حسب الشعب": "calqued from عربية",
+    "نوع مورفولوجي": "مركب",
+    "النوع الدلالي (كبرى)": "منقول",
+    "النوع الدلالي (صغرى)": "لغوي",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل + بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "الأيدي كأيدٍ",
+    "أيقونية الحركة": "الحركة كحركة + غير منطبق",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=HRJvVni5Bqg",
+    "انجليزي": "El Arish",
+    "عربية": "العريش",
+    "Latittude": "31.1316",
+    "Longitude": "33.7984",
+    "حاشية": "طلاء حرب",
+    "الأصل حسب الشعب": "مرتبط بالنشاط العسكري في شمال شبه جزيرة سيناء",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "الأيدي كأيدٍ",
+    "أيقونية الحركة": "ملتبس (الحركة كشكل و/أو كحركة)",
+    "الجمع": "أصابع مختارة"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=IUBurZGE8nk",
+    "انجليزي": "El Arish",
+    "عربية": "العريش",
+    "Latittude": "31.1316",
+    "Longitude": "33.7984",
+    "حاشية": "العريش",
+    "الأصل حسب الشعب": "غير معروف",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "؟",
+    "النوع الدلالي (صغرى)": "؟",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "؟",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "؟"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=mqSH6iomLhM",
+    "انجليزي": "Sharm El Sheikh",
+    "عربية": "شرم الشيخ",
+    "Latittude": "27.9158",
+    "Longitude": "34.3299",
+    "حاشية": "أنبوب تنفس",
+    "الأصل حسب الشعب": "أنبوب التنفس الخاص بمعدات السنوركل",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "معروفة كوجهة سياحية",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=M4D4baPenBc",
+    "انجليزي": "Dahab",
+    "عربية": "دهب",
+    "Latittude": "28.5",
+    "Longitude": "34.5167",
+    "حاشية": "ذهب",
+    "الأصل حسب الشعب": "calqued from عربية",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "منقول",
+    "النوع الدلالي (صغرى)": "لغوي",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "إشاري",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=xIYkDD4vZh4",
+    "انجليزي": "Hurghada",
+    "عربية": "الغردقة",
+    "Latittude": "27.2579",
+    "Longitude": "33.8116",
+    "حاشية": "معدات غوص",
+    "الأصل حسب الشعب": "مرتبط بمعدات الغوص",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "؟",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=lBxhoI7pGtI",
+    "انجليزي": "New Valley",
+    "عربية": "الوادي الجديد",
+    "Latittude": "25.4411",
+    "Longitude": "30.546",
+    "حاشية": "الوادي الجديد",
+    "الأصل حسب الشعب": "غير معروف",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "؟",
+    "النوع الدلالي (صغرى)": "؟",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "؟",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "؟",
+    "أيقونية الحركة": "؟",
+    "الجمع": "؟"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=_c_yYJ34ba8",
+    "انجليزي": "Siwa",
+    "عربية": "سيوة",
+    "Latittude": "29.2032",
+    "Longitude": "25.5195",
+    "حاشية": "تمر",
+    "الأصل حسب الشعب": "سيوة معروفة بالبلح",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط, بيئة",
+    "زوائد": "في الاشارة المحلية لسيوة تلمس اليد الأسنان",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "نعم",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "إشاري",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=-1kq-PG542E",
+    "انجليزي": "Sinai",
+    "عربية": "سيناء",
+    "Latittude": "29.5073",
+    "Longitude": "34.5277",
+    "حاشية": "التقاء كتلتين أرضيتين",
+    "الأصل حسب الشعب": "مرتبط بشكل شبه الجزيرة على الخريطة",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "وصفي",
+    "النوع الدلالي (صغرى)": "طبوغرافي, موقعي",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "متماثل",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "إشاري",
+    "الجمع": "اليدان"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=aJO0IXCBnB0",
+    "انجليزي": "Sinai",
+    "عربية": "سيناء",
+    "Latittude": "29.5073",
+    "Longitude": "34.5277",
+    "حاشية": "محاط بتيارين",
+    "الأصل حسب الشعب": "مرتبط بشكل شبه الجزيرة على الخريطة",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "وصفي",
+    "النوع الدلالي (صغرى)": "طبوغرافي, موقعي",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "لا",
+    "متعلق بالأكل": "لا",
+    "أيقونية شكل اليد": "جسم",
+    "أيقونية الحركة": "الحركة كشكل",
+    "الجمع": "أصابع مختارة"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=Q7r9QtFZdD0",
+    "انجليزي": "Nag Hammadi",
+    "عربية": "نجع حمادي",
+    "Latittude": "26.0452",
+    "Longitude": "32.2428",
+    "حاشية": "قصب السكر٢",
+    "الأصل حسب الشعب": "sugarcane is a common agricultural product here",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط",
+    "زوائد": "مختلفة عن المنيا لكن متعلق بالقصب كذلك",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "نعم",
+    "أيقونية شكل اليد": "مناولة",
+    "أيقونية الحركة": "الحركة كحركة",
+    "الجمع": "لا يوجد"
+  },
+  {
+    "Link": "https://www.youtube.com/watch?v=B6ygADoP8bM",
+    "انجليزي": "Dishna",
+    "عربية": "دشنا",
+    "Latittude": "26.1259",
+    "Longitude": "32.4716",
+    "حاشية": "دوم",
+    "الأصل حسب الشعب": "فاكهة الدوم منتج زراعي شائع هنا وفي مناطق أخرى من صعيد مصر",
+    "نوع مورفولوجي": "بسيط",
+    "النوع الدلالي (كبرى)": "ترابطي",
+    "النوع الدلالي (صغرى)": "مهنة/نشاط, بيئة",
+    "زوائد": "",
+    "متعلق بالحروف": "لا",
+    "نوع فونولوجي": "بيد واحدة",
+    "يشير إلى الجسم": "نعم",
+    "متعلق بالأكل": "نعم",
+    "أيقونية شكل اليد": "ملتبس",
+    "أيقونية الحركة": "غير منطبق",
+    "الجمع": "لا يوجد"
+  }
+]
+
+/* ===========================
+   Utilities & parsing
+=========================== */
+const PALETTE = [
+  "#1f78b4","#33a02c","#e31a1c","#ff7f00","#6a3d9a","#b15928","#8da0cb",
+  "#fb9a99","#fdbf6f","#cab2d6","#ffff99","#a6cee3","#b2df8a","#fb9a99",
+  "#e78ac3","#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3"
+];
+
+function safe(v){
+  if (v === undefined || v === null) return "N/A";
+  const s = String(v).trim();
+  return s === "" ? "N/A" : s;
+}
+
+function parseCategories(value){
+  if(!value || value === "N/A") return ["N/A"];
+
+  const raw = String(value).trim();
+
+  // Special values — DO NOT split them
+  if(raw === "?" || raw.toUpperCase() === "N/A") return ["N/A"];
+
+  // Now we safely split the multi-valued types
+  return raw.split(/[,\+]/)
+    .map(v => v.trim())
+    .filter(v => v)
+    .map(v => {
+      const low = v.toLowerCase();
+      if(low === "enviroment") return "Environment";
+      if(low === "topographic") return "Topographic";
+      if(low === "locational") return "Locational";
+      if(low === "?") return "N/A";
+      if(low === "n") return "N/A";   // catches accidental "N"
+      if(low === "a") return "N/A";   // catches accidental "A"
+      return v;
+    });
+}
+
+/* ===========================
+   Color maps
+=========================== */
+const colorMaps = {
+  // semantic_major:{
+  //   "Descriptive":"#1f78b4","Associative":"#33a02c","Occurrent":"#6a3d9a","Copied":"#e31a1c","Eponymous":"#17a2a6","N/A":"gray"
+  // },
+  // semantic_minor:{
+  //   "Relational":"#3182bd","Structure":"#756bb1","Functional":"#31a354",
+  //   "Occupation/Activity":"#ff7f00","Environment":"#b15928","Linguistic":"#1f78b4",
+  //   "Topographic":"#6a3d9a","Locational":"#33a02c","Notable Person":"#e31a1c",
+  //   "Occasion":"#fdb462","N/A":"gray"
+  // },
+  // morphology:{
+  //   "simplex":"#4daf4a","compound":"#984ea3","hybrid":"#377eb8","hybrid compound":"#377eb8","N/A":"gray"
+  // },
+  // fingerspelling:{ "yes":"#e41a1c","no":"#377eb8","N/A":"gray" },
+  // phonology:{
+  //   "one-handed":"#8dd3c7","symmetrical":"#ffffb3","asymmetrical":"#bebada",
+  //   "one-handed + symmetrical":"#fb8072","symmetrical + asymmetrical":"#80b1d3","N/A":"gray","?":"gray"
+  // },
+  // body_indexical:{
+  //   "yes":"#fdb462","no":"#b3de69","?":"#fccde5","N/A":"gray"
+  // },
+  // food:{
+  //   "yes":"#e78ac3","no":"#a6cee3","N/A":"gray"
+  // },
+  // handshape:{
+  //   "Object":"#66c2a5","Indexical":"#fc8d62","Handling":"#8da0cb","Hands as Hands":"#e5c494","Object + Hands as Hands":"#b3b3b3","Ambiguous":"#fb9a99","N/A":"gray"
+  // },
+  // movementIcon:{
+  //   "Movement-as-Shape":"#8dd3c7","Movement-as-Movement":"#ffffb3","Movement-as-Plural":"#bebada","Ambiguous":"#fb8072","None":"#ccebc5","N/A":"gray"
+  // },
+  // الجمع:{
+  //   "Hands":"#1f78b4","Movement":"#33a02c","Selected Fingers":"#e31a1c","None":"#999999","N/A":"gray"
+  // }
+};
+
+function ensureColorFor(mode, key){
+  if(!colorMaps[mode]) colorMaps[mode] = {};
+  if(colorMaps[mode][key]) return colorMaps[mode][key];
+  const used = new Set(Object.values(colorMaps[mode]));
+  const pick = PALETTE.find(c => !used.has(c)) || PALETTE[0];
+  colorMaps[mode][key] = pick;
+  return pick;
+}
+
+/* ===========================
+   Pie marker SVG
+=========================== */
+function drawPieSVG(colors,size){
+  const r=size/2;
+  let angle=-Math.PI/2;
+  let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">`;
+  const seg = colors.length;
+  for(let i=0;i<seg;i++){
+    const start = angle;
+    const end = angle + (2*Math.PI/seg);
+    const x1 = r + r * Math.cos(start);
+    const y1 = r + r * Math.sin(start);
+    const x2 = r + r * Math.cos(end);
+    const y2 = r + r * Math.sin(end);
+    const largeArc = (end-start) > Math.PI ? 1 : 0;
+    svg += `<path d="M ${r} ${r} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${colors[i]}" stroke="#222" stroke-opacity="0.06" stroke-width="0.4"/>`;
+    angle = end;
+  }
+  svg += `</svg>`;
+  return svg;
+}
+function pieMarker(lat,lng,colors,size=30){
+  const svg = drawPieSVG(colors,size);
+  return L.marker([lat,lng], { icon: L.divIcon({ html: svg, className: '', iconSize: [size,size], iconAnchor:[size/2,size/2] }) });
+}
+
+/* ===========================
+   Map & Rendering
+=========================== */
+const map = L.map('map').setView([26.8,30.8],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let markerLayer = L.layerGroup().addTo(map);
+
+function groupByPlace(rows){
+  const g = {};
+  rows.forEach(r=>{
+    const key = safe(r.عربية);
+    if(!g[key]) g[key] = [];
+    g[key].push(r);
+  });
+  return g;
+}
+
+function getValsForMode(rows, mode){
+  const all = [];
+  rows.forEach(r=>{
+    let raw = "N/A";
+    if(mode === 'semantic_major') raw = safe(r["النوع الدلالي (كبرى)"]);
+    else if(mode === 'semantic_minor') raw = safe(r["النوع الدلالي (صغرى)"]);
+    else if(mode === 'morphology') raw = safe(r["نوع مورفولوجي"]);
+    else if(mode === 'fingerspelling') raw = safe(r["متعلق بالحروف"]);
+    else if(mode === 'phonology') raw = safe(r["نوع فونولوجي"]);
+    else if(mode === 'body_indexical') raw = safe(r["يشير إلى الجسم"]);
+    else if(mode === 'food') raw = safe(r["متعلق بالأكل"]);
+    else if(mode === 'handshape') raw = safe(r["أيقونية شكل اليد"]);
+    else if(mode === 'movementIcon') raw = safe(r["أيقونية الحركة"]);
+    else if(mode === 'الجمع') raw = safe(r["الجمع"]);
+    if(['semantic_major','semantic_minor','phonology','handshape','movementIcon','الجمع'].includes(mode)){
+      const parts = parseCategories(raw);
+      parts.forEach(p => all.push(p));
+    } else {
+      all.push(raw);
+    }
+  });
+  return all.length ? all : ["N/A"];
+}
+
+function updateLegend(mode){
+  const lg = document.getElementById('legend');
+  const cmap = colorMaps[mode] || {};
+  let html = `<strong>Legend — ${mode.replace(/_/g,' ')}</strong><br/>`;
+  Object.keys(cmap).forEach(k => {
+    html += `<div class="legend-entry"><span style="background:${cmap[k]}"></span>${k}</div>`;
+  });
+  lg.innerHTML = html;
+}
+
+function render(mode='semantic_major'){
+  markerLayer.clearLayers();
+  const groups = groupByPlace(data);
+
+  for(const place in groups){
+    const rows = groups[place];
+    const rowWithCoords = rows.find(r=> r.Latittude !== undefined && r.Latittude !== null && !isNaN(Number(r.Latittude)));
+    if(!rowWithCoords) continue;
+    const lat = Number(rowWithCoords.Latittude);
+    const lng = Number(rowWithCoords.Longitude);
+    if(isNaN(lat) || isNaN(lng)) continue;
+
+    const vals = getValsForMode(rows, mode).map(v => v);
+    const unique = Array.from(new Set(vals));
+
+    const colors = unique.map(k => {
+      if(!colorMaps[mode] || colorMaps[mode][k] === undefined) {
+        return ensureColorFor(mode, k);
+      }
+      return colorMaps[mode][k];
+    });
+
+    let marker;
+    if(unique.length > 1){
+      marker = pieMarker(lat, lng, colors, 30);
+    } else {
+      const key = unique[0] || "N/A";
+      const fill = (colorMaps[mode] && colorMaps[mode][key]) ? colorMaps[mode][key] : ensureColorFor(mode, key);
+      marker = L.circleMarker([lat,lng], { radius: 8, color: fill, fillColor: fill, fillOpacity: 0.95, weight: 1 });
+    }
+
+    let popup = `<div class="popup-scroll">`;
+    rows.forEach(r=>{
+      const url = safe(r.Link);
+      const hasVid = url !== "N/A" && url.toLowerCase().includes("youtube");
+      popup += `<div class="sign-entry">`;
+      if(hasVid) {
+        popup += `<iframe src="${url.replace('watch?v=','embed/')}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+      }
+      popup += `<strong>حاشية:</strong> ${safe(r.حاشية)}<br/>`;
+      popup += `<strong>الأصل حسب الشعب:</strong> ${safe(r["الأصل حسب الشعب"])}<br/>`;
+      popup += `<strong>النوع الدلالي (كبرى):</strong> ${safe(r["النوع الدلالي (كبرى)"])}<br/>`;
+      popup += `<strong>النوع الدلالي (صغرى):</strong> ${safe(r["النوع الدلالي (صغرى)"])}<br/>`;
+      popup += `<strong>نوع مورفولوجي:</strong> ${safe(r["نوع مورفولوجي"])}<br/>`;
+      popup += `<strong>متعلق بالحروف:</strong> ${safe(r["متعلق بالحروف"])}<br/>`;
+      popup += `<strong>نوع فونولوجي:</strong> ${safe(r["نوع فونولوجي"])}<br/>`;
+      popup += `<strong>يشير إلى الجسم:</strong> ${safe(r["يشير إلى الجسم"])}<br/>`;
+      popup += `<strong>متعلق بالأكل:</strong> ${safe(r["متعلق بالأكل"])}<br/>`;
+      popup += `<strong>أيقونية شكل اليد:</strong> ${safe(r["أيقونية شكل اليد"])}<br/>`;
+      popup += `<strong>أيقونية الحركة:</strong> ${safe(r["أيقونية الحركة"])}<br/>`;
+      popup += `<strong>الجمع:</strong> ${safe(r["الجمع"])}<br/>`;
+      if(safe(r.زوائد) !== "N/A") popup += `<strong>زوائد:</strong> ${safe(r.زوائد)}<br/>`;
+      popup += `</div>`;
+    });
+    popup += `</div>`;
+
+    marker.bindPopup(`<h3>${place}</h3>` + popup);
+    marker.addTo(markerLayer);
+  }
+
+  updateLegend(mode);
+}
+
+/* ===========================
+   UI: radio buttons + editable multi-line info panel
+   Your provided infoStore is embedded exactly as given.
+=========================== */
+const MODES = [
+  { id: 'semantic_major', label: 'نوع دلالي كبرى' },
+  { id: 'semantic_minor', label: 'نوع دلالي صغرى' },
+  { id: 'morphology', label: 'المورفولوجيا' },
+  { id: 'fingerspelling', label: 'حروف' },
+  { id: 'phonology', label: 'نوع فونولوجي' },
+  { id: 'body_indexical', label: 'يشير إلى الجسم' },
+  { id: 'food', label: 'متعلق بالأكل' },
+  { id: 'handshape', label: 'أيقونية شكل اليد' },
+  { id: 'movementIcon', label: 'أيقونية الحركة' },
+  { id: 'الجمع', label: 'الجمع' }
+];
+
+const radioList = document.getElementById('radioList');
+const infoModeSelect = document.getElementById('infoModeSelect');
+const infoEditArea = document.getElementById('infoEditArea');
+const infoTitle = document.getElementById('infoTitle');
+const toggleInfoBtn = document.getElementById('toggleInfo');
+const resetInfoBtn = document.getElementById('resetInfo');
+
+const infoStore = {
+semantic_major: "الفئات الدلالية الرئيسية من Blair, D., & Tent, J. (2021). A revised typology of place-naming. Names, 69(4), 31-47.\n وصفي: استخدام اسم يدل على خاصية متأصلة في المكان\n ترابطي: استخدام اسم يدل على شيء مرتبط بالمكان أو بسياقه\n حدثي: استخدام اسم يوثق حدثًا أو واقعة أو مناسبة أو تاريخًا عند تسمية المكان\n منقول: نسخ صيغة الاسم من مكان آخر أو من لغة أخرى\n اشتقاقي: استخدام اسم شخص أو كيان مُسمّى آخر عبر اسم علم أو لقب أو بديل اشتقاقي كاسم مكان",
+
+semantic_minor: "الفئات الفرعية للفئات الدلالية الرئيسية من Blair, D., & Tent, J. (2021). A revised typology of place-naming. Names, 69(4), 31-47.",
+
+morphology: "تصنيف صرفي رباعي الاتجاهات مستند إلى De Sousa, A. M., & De Quadros, R. M. (2021). Toponymy in libras (Brazilian sign language): Formal and semantic-motivational analysis of the signs that name the cities of acre. Sign Language Studies, 22(1), 75-105.\n بسيط: يتكوّن الاسم المكاني من لكسيم واحد\n مركب: يتكوّن الاسم المكاني من عدة لكسيمات\n هجين: يتضمن الاسم المكاني عنصرًا متزامنًا مأخوذًا من اللغة المنطوقة",
+
+fingerspelling: "نعم/لا — ما إذا كانت الإشارة تستخدم حروف الأبجدية اليدوية، بما في ذلك الاختزالات المعجمية للتهجئة الإصبعية.",
+
+phonology: "النوع الفونولوجي الأساسي: بيد واحدة، أو بيدين مع متماثلية في أعضاء النطق، أو بيدين مع لا تماثل بين أعضاء النطق",
+
+body_indexical: "نعم/لا — ما إذا كانت الإشارة تشير إلى جزء من الجسد.",
+
+food: "نعم/لا — ما إذا كان اسم المكان مرتبطًا بالطعام.",
+
+handshape: "جسم: تشكيل اليد يشبه جسمًا أو شيئًا\n مناولة: تشكيل اليد يمثل طريقة إمساك الشخص بجسم ما\n الأيدي كأيدٍ: تمثل الأيدي الطريقة الفعلية التي يستخدم بها الشخص يديه\n إشاري: ليس نوعًا من الأيقونية تقنيًا، بل تُستخدم اليد فقط للإشارة إلى شيء ما",
+
+movementIcon: "الحركة كشكل: حركة أعضاء النطق ترسم شكل الجسم المُمثَّل\n الحركة كحركة: حركة أعضاء النطق تمثل كيفية تحرك الجسم عبر الفضاء مع الزمن\n الحركة كتعدد: حركة أعضاء النطق تمثل عدة أجسام\n إشاري: الحركة غير أيقونية وتُستخدم فقط لجذب الانتباه إلى عضو النطق نفسه\n لا يوجد: لا توجد حركة أو توجد فقط حركة انتقالية",
+
+الجمع: "يمكن تمثيل التعدد بشكل متزامن من خلال تشكيل أعضاء النطق.\n اليدان: استخدام اليدين يمثل عدة كيانات أو أجزاء من كيان\n الأصابع المختارة: الأصابع المستخدمة في عضو النطق النشط تمثل عدة كيانات أو أجزاء من كيان (مثل أرجل الحيوانات في الزقازيق)\n الحركة: حركة أعضاء النطق تمثل عدة كيانات تتحرك في الفضاء"};
+
+// populate radios and info select
+function buildUI(){
+  radioList.innerHTML = "";
+  infoModeSelect.innerHTML = "";
+  render(MODES[0].id);
+  MODES.forEach((m, idx) => {
+    const div = document.createElement('div');
+    div.className = 'radio-item';
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'colorMode';
+    input.id = 'r_' + m.id;
+    input.value = m.id;
+    input.checked = idx === 0;
+
+    input.addEventListener('change', () => {
+      render(m.id);
+      infoTitle.textContent = `Category Info — ${m.label}`;
+      infoEditArea.textContent = infoStore[m.id] || "";
+      infoModeSelect.value = m.id;
+    });
+    const label = document.createElement('label');
+    label.htmlFor = input.id;
+    label.textContent = m.label;
+    div.appendChild(input);
+    div.appendChild(label);
+    radioList.appendChild(div);
+
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.label;
+    infoModeSelect.appendChild(opt);
+  });
+
+  // initial selection
+  infoModeSelect.value = MODES[0].id;
+  infoEditArea.textContent = infoStore[MODES[0].id] || "";
+  infoTitle.textContent = `Category Info — ${MODES[0].label}`;
+}
+buildUI();
+
+// toggle info panel
+let infoVisible = true;
+toggleInfoBtn.addEventListener('click', ()=>{
+  infoVisible = !infoVisible;
+  document.getElementById('infoPanel').style.display = infoVisible ? 'block' : 'none';
+  toggleInfoBtn.textContent = infoVisible ? 'Hide info' : 'Show info';
+});
+
+// change info panel mode using select
+infoModeSelect.addEventListener('change', (e)=>{
+  const id = e.target.value;
+  const mode = MODES.find(m => m.id === id);
+  infoTitle.textContent = `Category Info — ${mode.label}`;
+  infoEditArea.textContent = infoStore[id] || "";
+});
+
+// save edited info on input (in-page only)
+infoEditArea.addEventListener('input', (e)=>{
+  const id = infoModeSelect.value;
+  infoStore[id] = e.target.innerText;
+});
+
+// reset info placeholder for current mode
+resetInfoBtn.addEventListener('click', ()=>{
+  const id = infoModeSelect.value;
+  infoEditArea.textContent = infoStore[id] || "";
+});
+
+// fit button
+document.getElementById('fitBtn').addEventListener('click', fitMapToMarkers);
+
+/* ===========================
+   Initial render & hook
+=========================== */
+render('semantic_major');
+function fitMapToMarkers(){
+  const layers = markerLayer.getLayers();
+  if(!layers.length) return;
+  const group = L.featureGroup(layers);
+  map.fitBounds(group.getBounds().pad(0.12));
+}
+const first = document.querySelector('input[name="colorBy"]');
+if (first) {
+  first.checked = true;
+  render(first.value);
+}
+
+</script>
+<script>
+const controlsToggleBtn = document.getElementById("controlsToggle");
+if (controlsToggleBtn) {
+  controlsToggleBtn.onclick = () => {
+    const panel = document.querySelector(".controls");
+    if (panel) panel.classList.toggle("open");
+  };
+}
+
+const legendToggleBtn = document.getElementById("legendToggle");
+if (legendToggleBtn) {
+  legendToggleBtn.onclick = () => {
+    const wrap = document.getElementById("legendWrap");
+    if (wrap) wrap.classList.toggle("open");
+  };
+}
+
+const infoToggleBtn2 = document.getElementById("infoToggle");
+if (infoToggleBtn2) {
+  infoToggleBtn2.onclick = () => {
+    const info = document.getElementById("infoPanel");
+    if (info) info.classList.toggle("open");
+  };
+}
+window.addEventListener("load", () => {
+  const isMobile = window.innerWidth <= 700;
+
+  if (!isMobile) {
+    // Desktop: open Color By and Info panels by default
+    document.querySelector(".controls")?.classList.add("open");
+    document.querySelector("#infoPanel")?.classList.add("open");
+  } else {
+    // Mobile: ensure both are closed by default
+    document.querySelector(".controls")?.classList.remove("open");
+    document.querySelector("#infoPanel")?.classList.remove("open");
+  }
+});
+
+
+</script>
+</body>
+</html>
